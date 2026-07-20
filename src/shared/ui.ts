@@ -384,6 +384,42 @@ export function gentleWobble(
 }
 
 /**
+ * Shrinks a label until it fits inside the thing it is drawn on.
+ *
+ * Answers are no longer one or two digits: "938826", "99.22" and "1/12" all
+ * have to sit on the same balloon that used to hold "7". Each game used to
+ * guess with its own `text.length > 2 ? 34 : 46` ladder, which was wrong the
+ * moment a six-character label appeared — every one of them collapsed to a
+ * single "small" size that still overflowed.
+ *
+ * Measuring is exact where counting characters is not: "1" and "8" are not
+ * the same width, and neither are "1/2" and "99.22".
+ *
+ * @param maxWidth How much room the label has, in design pixels.
+ * @param baseSize The size to use when the label is short enough.
+ * @param minSize  Never go below this, however long the label — past this
+ *                 point the answer is unreadable and the layout is wrong.
+ */
+export function fitText(
+  label: Phaser.GameObjects.Text,
+  maxWidth: number,
+  baseSize: number,
+  minSize = 20,
+): void {
+  label.setFontSize(baseSize);
+  if (label.width <= maxWidth) return;
+
+  // Width scales with font size, so the ratio lands it in one step. The
+  // loop is a guard against rounding leaving it a pixel over.
+  let size = Math.max(minSize, Math.floor((baseSize * maxWidth) / label.width));
+  label.setFontSize(size);
+  while (label.width > maxWidth && size > minSize) {
+    size -= 1;
+    label.setFontSize(size);
+  }
+}
+
+/**
  * Floats a short encouraging message upward from a point, then fades.
  * Used for both praise and the soft "try again" nudge.
  */

@@ -17,7 +17,7 @@ import { PALETTE } from '../shared/art/doodle';
 import type { Question } from '../shared/mathEngine';
 import { PIECE_COLOURS } from './BootScene';
 import { sfx } from '../shared/audio';
-import { celebrate } from '../shared/ui';
+import { celebrate, fitText } from '../shared/ui';
 
 /** One number flying through the air. */
 interface FlyingNumber {
@@ -191,8 +191,10 @@ export class NumberNinjaScene extends MiniGameScene {
 
     const text = this.labelFor(this.question, index === -1 ? 0 : index);
     const label = this.add
-      .text(0, 0, text, textStyle(text.length > 2 ? 34 : 46, '#2f2b3a', { fontStyle: 'bold' }))
+      .text(0, 0, text, textStyle(46, '#2f2b3a', { fontStyle: 'bold' }))
       .setOrigin(0.5);
+    // Inside the 52px-radius disc, with room for the stroke.
+    fitText(label, 92, 46);
 
     const x = fromLeft ? -70 : DESIGN_WIDTH + 70;
     const container = this.add.container(x, DESIGN_HEIGHT - 40, [disc, label]).setDepth(100);

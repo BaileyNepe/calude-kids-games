@@ -17,6 +17,7 @@ import {
   doodleRectPoints,
 } from '../shared/art/doodle';
 import type { Question } from '../shared/mathEngine';
+import { fitText } from '../shared/ui';
 
 /** One tappable answer plank on the deck. */
 interface AnswerPlank {
@@ -127,8 +128,10 @@ export class PirateShipScene extends MiniGameScene {
       });
 
       const label = this.add
-        .text(0, 0, `${value}`, textStyle(56, '#5a3d00', { fontStyle: 'bold' }))
+        .text(0, 0, this.labelFor(question, index), textStyle(56, '#5a3d00', { fontStyle: 'bold' }))
         .setOrigin(0.5);
+      // The plank is 132 wide; a six-digit answer used to run off it.
+      fitText(label, 116, 56);
 
       const container = this.add.container(slot.x, slot.y, [plank, label]).setDepth(8);
       // No setSize(): it would offset the hit area on a Container (see

@@ -16,6 +16,7 @@ import { CENTRE_X, DESIGN_HEIGHT, DESIGN_WIDTH, SCENES, textStyle } from '../sha
 import { PALETTE, makeRng, seedFrom, doodleShape, doodleRectPoints } from '../shared/art/doodle';
 import type { Question } from '../shared/mathEngine';
 import { sfx } from '../shared/audio';
+import { fitText } from '../shared/ui';
 
 /** One answer button on the console. */
 interface FuelButton {
@@ -141,8 +142,9 @@ export class RocketLaunchScene extends MiniGameScene {
 
       const text = this.labelFor(question, index);
       const label = this.add
-        .text(0, 0, text, textStyle(text.length > 2 ? 38 : 48, '#2f2b3a', { fontStyle: 'bold' }))
+        .text(0, 0, text, textStyle(48, '#2f2b3a', { fontStyle: 'bold' }))
         .setOrigin(0.5);
+      fitText(label, 152, 48);
 
       const container = this.add.container(x, y, [bg, label]).setDepth(100);
       container.setInteractive(

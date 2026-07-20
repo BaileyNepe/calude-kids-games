@@ -19,6 +19,7 @@ import { CAT_CATALOG, getCat } from '../shared/pets';
 import { ensureCatFaces } from '../shared/art/sprites';
 import { TREATS } from './BootScene';
 import { sfx } from '../shared/audio';
+import { fitText } from '../shared/ui';
 
 /** One coin button the child can hand over. */
 interface PriceTag {
@@ -148,6 +149,8 @@ export class CatCafeScene extends MiniGameScene {
       const label = this.add
         .text(12, 0, this.labelFor(question, index), textStyle(40, '#5a3d00', { fontStyle: 'bold' }))
         .setOrigin(0.5);
+      // The coin takes the left third of the 168-wide card.
+      fitText(label, 108, 40);
 
       const container = this.add.container(x, y, [bg, coin, label]).setDepth(100);
       container.setInteractive(

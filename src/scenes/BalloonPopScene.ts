@@ -13,6 +13,7 @@ import { PALETTE } from '../shared/art/doodle';
 import type { Question } from '../shared/mathEngine';
 import { PIECE_COLOURS } from './BootScene';
 import { sfx } from '../shared/audio';
+import { fitText } from '../shared/ui';
 
 /** One floating balloon and the number written on it. */
 interface Balloon {
@@ -101,11 +102,12 @@ export class BalloonPopScene extends MiniGameScene {
       // Slightly smaller balloons so six fit across without crowding.
       const image = this.add.image(0, 0, `balloon-${colour.name}`).setScale(0.86);
       const text = this.labelFor(question, index);
-      // Fractions ("3/4") need a smaller size than a bare number to fit.
-      const fontSize = text.length > 2 ? 40 : 56;
       const label = this.add
-        .text(0, -26, text, textStyle(fontSize, '#2f2b3a', { fontStyle: 'bold' }))
+        .text(0, -26, text, textStyle(56, '#2f2b3a', { fontStyle: 'bold' }))
         .setOrigin(0.5);
+      // The balloon is 150px wide before scaling; keep the label inside the
+      // bulb rather than letting a six-digit answer hang off both sides.
+      fitText(label, 150 * 0.86 - 26, 56);
 
       const container = this.add.container(x, y, [image, label]);
       // A generous rectangular hit area — deliberately larger than the

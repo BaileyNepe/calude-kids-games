@@ -20,6 +20,7 @@ import { CAT_CATALOG, getCat } from '../shared/pets';
 import { PIECE_COLOURS } from './BootScene';
 import { FISH_LABEL_OFFSET, ensureCatFaces } from '../shared/art/sprites';
 import { sfx } from '../shared/audio';
+import { fitText } from '../shared/ui';
 
 /** One draggable fish. */
 interface Fish {
@@ -189,12 +190,12 @@ export class FeedTheCatScene extends MiniGameScene {
           FISH_LABEL_OFFSET.x * 0.85,
           FISH_LABEL_OFFSET.y * 0.85,
           text,
-          // Longer labels ("12", "3/4") step down so they stay on the badge.
-          textStyle(text.length > 2 ? 30 : text.length > 1 ? 38 : 46, '#2f2b3a', {
-            fontStyle: 'bold',
-          }),
+          textStyle(46, '#2f2b3a', { fontStyle: 'bold' }),
         )
         .setOrigin(0.5);
+      // Kept on the fish's pale badge, which is a good deal narrower than
+      // the 220px fish itself.
+      fitText(label, 104, 46);
 
       const container = this.add.container(slot.x, slot.y, [image, label]).setDepth(10);
       // A forgiving hit area — dragging is harder than tapping. No
