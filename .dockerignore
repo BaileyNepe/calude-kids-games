@@ -6,8 +6,6 @@ dist/
 ios/
 .git/
 .github/
-.netlify/
-.vercel/
 .DS_Store
 *.local
 npm-debug.log*

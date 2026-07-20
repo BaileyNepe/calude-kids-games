@@ -1,6 +1,6 @@
 # Rendered by nginx's entrypoint (envsubst over ${PORT}) into
-# /etc/nginx/conf.d/default.conf at container start. Mirrors the caching and
-# SPA-fallback rules in netlify.toml so both hosts behave the same.
+# /etc/nginx/conf.d/default.conf at container start — Railway assigns the
+# port per deployment, so it can't be baked into the image.
 
 server {
     listen       ${PORT};
@@ -26,7 +26,8 @@ server {
 
     # Bundle filenames carry a content hash, so they can be cached forever.
     location /assets/ {
-        expires    1y;
+        # No `expires` here — it would emit a second, weaker Cache-Control
+        # header alongside this one.
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
 

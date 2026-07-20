@@ -27,17 +27,33 @@ Other scripts:
 
 ## Deploying to the web
 
-The game is a static site, so any static host works. **Netlify** is set up
-already via `netlify.toml`:
+The game is hosted on **Railway**. `Dockerfile` builds the bundle with Node
+and serves it from nginx; `railway.json` points Railway at that Dockerfile, so
+there is nothing to fill in by hand:
 
 1. Push this repo to GitHub.
-2. At [app.netlify.com](https://app.netlify.com) → *Add new site* → *Import
-   an existing project* → pick the repo.
-3. Netlify reads `netlify.toml`, so leave the build settings alone and press
-   Deploy.
+2. At [railway.app](https://railway.app) → *New Project* → *Deploy from GitHub
+   repo* → pick the repo.
+3. Under *Settings → Networking*, press *Generate Domain* to get a public URL.
+4. Under *Settings → Edge*, turn on *Enable CDN Caching*. It's free on every
+   plan and off by default. There is no config-as-code key for it, so it has
+   to be clicked once per service.
 
-Every push to the default branch redeploys. To try it without a repo,
-run `npm run build` and drag the `dist/` folder onto Netlify's dashboard.
+Every push to the default branch redeploys. Railway injects `PORT` and nginx
+picks it up at container start, so don't set it yourself. `/healthz` is the
+healthcheck endpoint Railway waits on before switching traffic to a new build.
+
+The CDN obeys the `Cache-Control` headers nginx sends, which is why they are
+set deliberately in `docker/nginx.conf.template`: hashed files under
+`/assets/` are cached at the edge for a year, while `index.html` revalidates
+on every request so a deploy is visible immediately.
+
+To run the image locally exactly as Railway will:
+
+```bash
+docker build -t math-world .
+docker run --rm -e PORT=8080 -p 8080:8080 math-world
+```
 
 On an iPad, opening the site in Safari and choosing *Share → Add to Home
 Screen* gives an app-like icon that launches full screen — worth doing while
