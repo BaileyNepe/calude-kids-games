@@ -514,6 +514,15 @@ export interface KidLook {
   collar?: number;
   /** Long hair falls past the shoulders; short is a chin-length bob. */
   hairLength?: 'short' | 'long';
+  /**
+   * What the lower half is.
+   *
+   * The reference drawing is a flared tunic, which reads as a dress on
+   * every character no matter what colour it is. 'shorts' straightens the
+   * tunic into a top and puts two legs of clothing under it instead — in
+   * this drawing style that silhouette is what makes a kid read as a boy.
+   */
+  bottoms?: 'tunic' | 'shorts';
   /** Which arm is raised. The asymmetry is what makes it look hand-drawn. */
   armPose?: 'leftUp' | 'rightUp' | 'bothDown';
 }
@@ -621,7 +630,10 @@ export function makeKidTexture(
     const shoulderY = headY + headR + 4;
     const hipY = shoulderY + 96;
     const halfTop = 22;
-    const halfBottom = 42;
+    // Barely flared for shorts, so the same trapezoid reads as a t-shirt
+    // rather than a skirt.
+    const shorts = look.bottoms === 'shorts';
+    const halfBottom = shorts ? 28 : 42;
 
     // Collar/scarf spreading out behind the shoulders, as on the reference
     // girl. Drawn wider than the tunic so it reads as a shape of its own
@@ -683,6 +695,25 @@ export function makeKidTexture(
     const footY = hipY + 86;
     doodleStroke(g, rng, { x: cx - 17, y: hipY }, { x: cx - 26, y: footY }, PALETTE.ink, 6, 2);
     doodleStroke(g, rng, { x: cx + 17, y: hipY }, { x: cx + 28, y: footY }, PALETTE.ink, 6, 2);
+
+    // Shorts go on over the top of the legs — drawn after the strokes so
+    // the leg lines don't run through them.
+    if (shorts) {
+      const hemY = hipY + 38;
+      for (const dir of [-1, 1] as const) {
+        doodleShape(
+          g,
+          [
+            { x: cx + dir * 3, y: hipY - 6 },
+            { x: cx + dir * (halfBottom + 2), y: hipY - 6 },
+            { x: cx + dir * (halfBottom + 5), y: hemY },
+            { x: cx + dir * 8, y: hemY - 4 },
+          ],
+          look.bottom,
+          { offset: 0, lineWidth: 4 },
+        );
+      }
+    }
 
     // Solid blob shoes, angled outward and big enough to read as shoes.
     for (const [fx, dir] of [

@@ -12,6 +12,7 @@ import {
   ALL_OPERATIONS,
   DIFFICULTY_TIERS,
   DifficultyTracker,
+  MAX_TIMES_TABLE,
   clampTier,
   generateDistractors,
   generateQuestion,
@@ -149,6 +150,139 @@ describe('arithmetic correctness', () => {
       }
     }
   });
+
+  it('never asks beyond the 12 times table, however big the tier', () => {
+    for (const tier of DIFFICULTY_TIERS) expect(tier.maxFactor).toBeLessThanOrEqual(MAX_TIMES_TABLE);
+
+    for (let tier = 0; tier < TIERS; tier++) {
+      for (let i = 0; i < ITERATIONS; i++) {
+        const times = generateQuestion(tier, 4, Math.random, ['multiply']);
+        for (const factor of times.prompt.split(' × ').map(Number)) {
+          expect(factor).toBeLessThanOrEqual(MAX_TIMES_TABLE);
+        }
+
+        // Division is the same table read backwards, so both the divisor and
+        // the answer have to stay inside it.
+        const shared = generateQuestion(tier, 4, Math.random, ['divide']);
+        const divisor = Number(shared.prompt.split(' ÷ ')[1]);
+        expect(divisor).toBeLessThanOrEqual(MAX_TIMES_TABLE);
+        expect(shared.answer).toBeLessThanOrEqual(MAX_TIMES_TABLE);
+      }
+    }
+  });
+
+  it('carries and borrows once the numbers are big enough to need it', () => {
+    for (let tier = 0; tier < TIERS; tier++) {
+      if (!DIFFICULTY_TIERS[tier]!.requiresRegrouping) continue;
+      // Not every single draw can be guaranteed — the generator gives up
+      // after a bounded number of retries rather than hang — but a run of
+      // trivial "no regrouping needed" questions is the thing to catch.
+      let regrouped = 0;
+      for (let i = 0; i < 100; i++) {
+        const sum = generateQuestion(tier, 4, Math.random, ['add']);
+        const [a, b] = sum.prompt.split(' + ').map(Number);
+        // A carry shows up as the columns not simply concatenating.
+        if (`${a! % 10}`.length + `${b! % 10}`.length > 0 && (a! % 10) + (b! % 10) >= 10) regrouped++;
+      }
+      expect(regrouped).toBeGreaterThan(20);
+    }
+  });
+});
+
+describe('the digit sizes each mode asks for', () => {
+  /** The widest answer a mode can produce for adding. */
+  function widestAnswer(mode: DifficultyMode): number {
+    let widest = 0;
+    const tracker = new DifficultyTracker(99, { operations: ['add'], mode });
+    for (let i = 0; i < ITERATIONS; i++) {
+      widest = Math.max(widest, `${tracker.nextQuestion().answer}`.length);
+    }
+    return widest;
+  }
+
+  it('gives Medium three and four digit sums, and Hard up to six', () => {
+    expect(widestAnswer('easy')).toBeLessThanOrEqual(2);
+    expect(widestAnswer('medium')).toBeGreaterThanOrEqual(3);
+    expect(widestAnswer('hard')).toBeGreaterThanOrEqual(6);
+  });
+
+  it('makes Hard strictly harder than Medium, which is harder than Easy', () => {
+    const smallest = (mode: DifficultyMode): number =>
+      Math.min(
+        ...Array.from({ length: 60 }, () => {
+          const tracker = new DifficultyTracker(0, { operations: ['add'], mode });
+          return tracker.nextQuestion().answer;
+        }),
+      );
+    expect(smallest('medium')).toBeGreaterThan(smallest('easy'));
+    expect(smallest('hard')).toBeGreaterThan(smallest('medium'));
+  });
+});
+
+describe('the operations added for older children', () => {
+  it('keeps decimal answers free of floating point dust', () => {
+    for (let tier = 0; tier < TIERS; tier++) {
+      for (let i = 0; i < ITERATIONS; i++) {
+        const q = generateQuestion(tier, 4, Math.random, ['decimal']);
+        // At most two decimal places, and every option printed the same way.
+        for (const label of q.optionLabels) expect(label).toMatch(/^\d+\.\d{1,2}$/);
+        const places = q.optionLabels[0]!.split('.')[1]!.length;
+        expect(q.answer).toBeCloseTo(Number(q.answer.toFixed(places)), 10);
+        // The prompt must actually evaluate to the answer.
+        const [left, op, right] = q.prompt.split(' ');
+        const value = op === '+' ? Number(left) + Number(right) : Number(left) - Number(right);
+        expect(value).toBeCloseTo(q.answer, 8);
+      }
+    }
+  });
+
+  it('only asks percentages that come out whole', () => {
+    for (let tier = 0; tier < TIERS; tier++) {
+      for (let i = 0; i < ITERATIONS; i++) {
+        const q = generateQuestion(tier, 4, Math.random, ['percent']);
+        const [percent, amount] = q.prompt.match(/(\d+)% of (\d+)/)!.slice(1).map(Number);
+        expect(Number.isInteger(q.answer)).toBe(true);
+        expect(q.answer).toBe((amount! * percent!) / 100);
+      }
+    }
+  });
+
+  it('squares and cubes correctly, and offers the classic wrong answer', () => {
+    for (let tier = 0; tier < TIERS; tier++) {
+      for (let i = 0; i < ITERATIONS; i++) {
+        const q = generateQuestion(tier, 4, Math.random, ['exponent']);
+        const base = Number(q.prompt.slice(0, -1));
+        const power = q.prompt.endsWith('³') ? 3 : 2;
+        expect(q.answer).toBe(base ** power);
+        expect(base).toBeLessThanOrEqual(MAX_TIMES_TABLE);
+      }
+    }
+    // "7² is 14" is the mistake being tested for, so it must be on offer.
+    const seen = new Set<string>();
+    for (let i = 0; i < ITERATIONS; i++) {
+      const q = generateQuestion(4, 4, Math.random, ['exponent']);
+      const base = Number(q.prompt.slice(0, -1));
+      const power = q.prompt.endsWith('³') ? 3 : 2;
+      if (q.options.includes(base * power)) seen.add(q.prompt);
+    }
+    expect(seen.size).toBeGreaterThan(0);
+  });
+
+  it('never asks what a digit is worth when that digit repeats', () => {
+    for (let tier = 0; tier < TIERS; tier++) {
+      for (let i = 0; i < ITERATIONS; i++) {
+        const q = generateQuestion(tier, 4, Math.random, ['placeValue']);
+        const digit = q.instruction.match(/the (\d) worth/)![1]!;
+        // Ambiguity here means a right answer marked wrong.
+        expect(q.prompt.split('').filter((c) => c === digit)).toHaveLength(1);
+
+        const index = q.prompt.indexOf(digit);
+        expect(q.answer).toBe(Number(digit) * 10 ** (q.prompt.length - 1 - index));
+        // The number never starts with a zero.
+        expect(q.prompt.startsWith('0')).toBe(false);
+      }
+    }
+  });
 });
 
 describe('fractions', () => {
@@ -233,8 +367,8 @@ describe('difficulty modes', () => {
   it('pins each mode inside its own band', () => {
     const bands: Record<DifficultyMode, [number, number]> = {
       easy: [0, 1],
-      medium: [1, 2],
-      hard: [3, 4],
+      medium: [2, 3],
+      hard: [4, 6],
       adaptive: [0, TIERS - 1],
     };
     for (const [mode, [min, max]] of Object.entries(bands) as [DifficultyMode, [number, number]][]) {
@@ -279,6 +413,28 @@ describe('DifficultyTracker', () => {
     const tracker = new DifficultyTracker(2, { operations: ['add'], mode: 'adaptive' });
     for (let i = 0; i < 20; i++) tracker.recordWrong();
     expect(tracker.tier).toBe(2);
+  });
+
+  it('honours an explicit Hard even on the gentlest level', () => {
+    // Level 1 allows tiers 0-1. Picking Hard used to be clamped into that
+    // band, so a child on the Meadow who asked for Hard got tier 1 — the
+    // same questions Medium was already giving, and the setting did nothing.
+    const meadow = { min: 0, max: 1 };
+    const hard = new DifficultyTracker(0, { operations: ['add'], mode: 'hard' }, meadow);
+    expect(hard.tier).toBeGreaterThanOrEqual(4);
+
+    const medium = new DifficultyTracker(0, { operations: ['add'], mode: 'medium' }, meadow);
+    expect(medium.tier).toBeGreaterThanOrEqual(2);
+    expect(hard.tier).toBeGreaterThan(medium.tier);
+  });
+
+  it('still lets the level pace things in Just Right mode', () => {
+    // Adaptive is the one mode that defers to the level, because pacing the
+    // climb is the entire point of it.
+    const tracker = new DifficultyTracker(6, { operations: ['add'], mode: 'adaptive' }, { min: 0, max: 1 });
+    expect(tracker.tier).toBe(1);
+    for (let i = 0; i < 100; i++) tracker.recordCorrect();
+    expect(tracker.tier).toBe(1);
   });
 
   it('serves questions at its current tier using the chosen operations', () => {

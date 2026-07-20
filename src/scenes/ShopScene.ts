@@ -14,10 +14,11 @@ import { CENTRE_X, DESIGN_WIDTH, SCENES, textStyle } from '../shared/config';
 import { PALETTE, makeRng, seedFrom, doodleShape, doodleRectPoints } from '../shared/art/doodle';
 import { gameState } from '../shared/gameState';
 import { SHOP_TABS, itemsForSlot, type ItemSlot, type WardrobeItem } from '../shared/wardrobe';
-import { CoinDisplay, createBackButton, floatingText } from '../shared/ui';
+import { CoinDisplay, DoodleButton, createBackButton, floatingText } from '../shared/ui';
 import { sfx } from '../shared/audio';
 import { CAT_CATALOG, getCat } from '../shared/pets';
-import { HAT_OFFSET_Y, COLLAR_OFFSET_Y } from '../shared/art/wardrobe';
+import { HAT_OFFSET_Y, COLLAR_OFFSET_Y, kidTextureWithOutfit } from '../shared/art/wardrobe';
+import { getKidLook } from './BootScene';
 
 export class ShopScene extends Phaser.Scene {
   private tab: ItemSlot = 'hat';
@@ -66,19 +67,38 @@ export class ShopScene extends Phaser.Scene {
 
     this.add.text(205, 186, 'You', textStyle(30, '#2f2b3a', { fontStyle: 'bold' })).setOrigin(0.5);
 
-    const character = gameState.character ?? 'girl';
-    this.previewKid = this.add.image(205, 400, `kid-${character}`).setScale(0.62);
+    this.previewKid = this.add.image(205, 400, this.kidTexture()).setScale(0.62);
 
     // A cat below, so collars can be previewed too.
     const firstCat = gameState.pets[0] ?? CAT_CATALOG[0]!.id;
     const catId = getCat(firstCat) !== undefined ? firstCat : CAT_CATALOG[0]!.id;
-    this.previewCat = this.add.image(205, 620, `cat-${catId}-idle`).setScale(0.5);
+    this.previewCat = this.add.image(205, 596, `cat-${catId}-idle`).setScale(0.5);
+
+    // Character select was only ever shown once, on a brand-new save, so a
+    // child who picked in a hurry was stuck with that choice forever. This
+    // is the way back to it. Inside the panel rather than below it: the
+    // design is 800 tall but a laptop window often shows less than that.
+    new DoodleButton(this, 205, 676, 'Change me', () => this.chooseCharacter(), {
+      colour: PALETTE.teal,
+      fontSize: 26,
+      width: 220,
+    });
 
     this.refreshPreview();
   }
 
-  /** Redraws the worn hat and collar on the preview. */
+  /** The player's character wearing whatever outfit is currently on. */
+  private kidTexture(): string {
+    const character = gameState.character ?? 'girl';
+    return kidTextureWithOutfit(this, character, getKidLook(character), gameState.wearing.outfit);
+  }
+
+  /** Redraws the worn outfit, hat and collar on the preview. */
   private refreshPreview(): void {
+    // The outfit is part of the character texture, so it's a swap rather
+    // than an overlay like the hat and collar below.
+    this.previewKid.setTexture(this.kidTexture());
+
     this.previewHat?.destroy();
     this.previewHat = null;
     this.previewCollar?.destroy();
@@ -289,6 +309,15 @@ export class ShopScene extends Phaser.Scene {
     this.cameras.main.fadeOut(240);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.start(SCENES.world);
+    });
+  }
+
+  /** Opens character select, which returns to the world when confirmed. */
+  private chooseCharacter(): void {
+    sfx.whoosh();
+    this.cameras.main.fadeOut(240);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start(SCENES.characterSelect);
     });
   }
 }

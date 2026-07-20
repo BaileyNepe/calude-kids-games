@@ -1,10 +1,10 @@
 /**
  * The maths settings screen.
  *
- * Lets the player choose what to practise (adding, taking away, times,
- * sharing, fractions) and how hard it should be. Written for a child to
- * operate alone: big toggles, plain words, and a visible tick rather than
- * a checkbox.
+ * Lets the player choose what to practise — adding, taking away, times,
+ * sharing, fractions, decimals, percentages, powers and place value — and
+ * how hard it should be. Written for a child to operate alone: big toggles,
+ * plain words, and a visible tick rather than a checkbox.
  */
 
 import Phaser from 'phaser';
@@ -15,13 +15,29 @@ import { gameState } from '../shared/gameState';
 import { DoodleButton, createBackButton } from '../shared/ui';
 import { sfx } from '../shared/audio';
 
-/** The difficulty choices, in the order they're shown. */
+/**
+ * The difficulty choices, in the order they're shown.
+ *
+ * The blurbs quote real numbers rather than vague comparatives: a parent
+ * setting this up should be able to tell what their child is about to be
+ * asked without playing a round to find out.
+ */
 const MODES: readonly { mode: DifficultyMode; label: string; blurb: string; colour: number }[] = [
-  { mode: 'easy', label: 'Easy', blurb: 'Small numbers', colour: PALETTE.green },
-  { mode: 'medium', label: 'Medium', blurb: 'A bit bigger', colour: PALETTE.sun },
-  { mode: 'hard', label: 'Hard', blurb: 'Big numbers', colour: PALETTE.orange },
+  { mode: 'easy', label: 'Easy', blurb: 'Up to 20', colour: PALETTE.green },
+  { mode: 'medium', label: 'Medium', blurb: '3 and 4 digits', colour: PALETTE.sun },
+  { mode: 'hard', label: 'Hard', blurb: 'Up to 6 digits', colour: PALETTE.orange },
   { mode: 'adaptive', label: 'Just right', blurb: 'Gets harder as you go', colour: PALETTE.purple },
 ];
+
+/**
+ * Operation tile geometry.
+ *
+ * Nine operations no longer fit across one row at a tappable size, so they
+ * wrap onto two. Everything below is driven off these constants — the tile
+ * background, the hit area and the tick all have to agree, and they used to
+ * be three separate sets of magic numbers.
+ */
+const OP_TILE = { width: 170, height: 132, gap: 14, perRow: 5, firstRowY: 206, rowGap: 142 };
 
 export class SettingsScene extends Phaser.Scene {
   /** Redrawn whenever a toggle changes. */
@@ -45,12 +61,18 @@ export class SettingsScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(CENTRE_X, 132, 'What shall we practise?', textStyle(30, '#2f2b3a'))
+      .text(CENTRE_X, 118, 'What shall we practise?', textStyle(30, '#2f2b3a'))
       .setOrigin(0.5);
     this.buildOperationTiles();
 
     this.add.text(CENTRE_X, 452, 'How hard?', textStyle(30, '#2f2b3a')).setOrigin(0.5);
     this.buildModeTiles();
+
+    // Both sets of tiles are painted by refresh(), so it has to run after
+    // both exist. Calling it from inside buildOperationTiles() meant the
+    // difficulty tiles were drawn with no background at all until the first
+    // tap — the player could not see which difficulty was already chosen.
+    this.refresh();
 
     new DoodleButton(this, CENTRE_X, DESIGN_HEIGHT - 74, 'Done', () => this.returnToWorld(), {
       colour: PALETTE.green,
@@ -59,32 +81,37 @@ export class SettingsScene extends Phaser.Scene {
     });
   }
 
-  /** A row of toggles, one per operation. */
+  /** Two rows of toggles, one per operation. */
   private buildOperationTiles(): void {
-    const width = 210;
-    const gap = 18;
-    const total = ALL_OPERATIONS.length * width + (ALL_OPERATIONS.length - 1) * gap;
-    const startX = CENTRE_X - total / 2 + width / 2;
+    const { width, height, gap, perRow, firstRowY, rowGap } = OP_TILE;
 
     ALL_OPERATIONS.forEach((operation, index) => {
-      const x = startX + index * (width + gap);
-      const tile = this.add.container(x, 288);
+      const row = Math.floor(index / perRow);
+      const column = index % perRow;
+      // The last row is usually short, so it is centred on its own count
+      // rather than left-aligned under a full row above it.
+      const inRow = Math.min(perRow, ALL_OPERATIONS.length - row * perRow);
+      const rowWidth = inRow * width + (inRow - 1) * gap;
+      const x = CENTRE_X - rowWidth / 2 + width / 2 + column * (width + gap);
+      const tile = this.add.container(x, firstRowY + row * rowGap);
 
       const bg = this.add.graphics();
       tile.add(bg);
 
+      // "100s" needs to be smaller than "+" to sit in the same box.
+      const glyph = OPERATION_INFO[operation].symbol;
       const symbol = this.add
-        .text(0, -46, OPERATION_INFO[operation].symbol, textStyle(64, '#2f2b3a', { fontStyle: 'bold' }))
+        .text(0, -26, glyph, textStyle(glyph.length > 2 ? 30 : 42, '#2f2b3a', { fontStyle: 'bold' }))
         .setOrigin(0.5);
       const label = this.add
-        .text(0, 26, OPERATION_INFO[operation].label, textStyle(24, '#2f2b3a'))
+        .text(0, 34, OPERATION_INFO[operation].label, textStyle(19, '#2f2b3a'))
         .setOrigin(0.5);
       // The tick appears when this operation is switched on.
       const tick = this.add.graphics();
       tile.add([symbol, label, tick]);
 
       tile.setInteractive(
-        new Phaser.Geom.Rectangle(-width / 2, -110, width, 220),
+        new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height),
         Phaser.Geom.Rectangle.Contains,
       );
       tile.on('pointerdown', () => {
@@ -96,8 +123,6 @@ export class SettingsScene extends Phaser.Scene {
 
       this.operationTiles.set(operation, tile);
     });
-
-    this.refresh();
   }
 
   /** A row of difficulty choices. */
@@ -109,7 +134,7 @@ export class SettingsScene extends Phaser.Scene {
 
     MODES.forEach((entry, index) => {
       const x = startX + index * (width + gap);
-      const tile = this.add.container(x, 578);
+      const tile = this.add.container(x, 560);
 
       const bg = this.add.graphics();
       tile.add(bg);
@@ -150,20 +175,27 @@ export class SettingsScene extends Phaser.Scene {
       const bg = tile.getAt(0) as Phaser.GameObjects.Graphics;
       const tick = tile.getAt(3) as Phaser.GameObjects.Graphics | undefined;
       const rng = makeRng(seedFrom(`op-tile-${operation}`));
+      const { width, height } = OP_TILE;
 
       bg.clear();
-      doodleShape(bg, doodleRectPoints(rng, -105, -110, 210, 220, 3), on ? PALETTE.sun : 0xdfe6ee, {
-        offset: 3,
-        lineWidth: on ? 6 : 4,
-      });
+      doodleShape(
+        bg,
+        doodleRectPoints(rng, -width / 2, -height / 2, width, height, 3),
+        on ? PALETTE.sun : 0xdfe6ee,
+        { offset: 3, lineWidth: on ? 6 : 4 },
+      );
 
       if (tick !== undefined) {
         tick.clear();
         if (on) {
-          // A hand-drawn tick in the corner.
+          // A hand-drawn tick in the top-right corner. Not the bottom: that
+          // is where the operation's name sits, and the tick was landing on
+          // top of it ("Taking aw✓").
           const tickRng = makeRng(seedFrom(`tick-${operation}`));
-          doodleStroke(tick, tickRng, { x: 56, y: 74 }, { x: 72, y: 92 }, PALETTE.green, 8);
-          doodleStroke(tick, tickRng, { x: 72, y: 92 }, { x: 96, y: 54 }, PALETTE.green, 8);
+          const x = width / 2 - 40;
+          const y = -height / 2 + 30;
+          doodleStroke(tick, tickRng, { x, y }, { x: x + 10, y: y + 10 }, PALETTE.green, 7);
+          doodleStroke(tick, tickRng, { x: x + 10, y: y + 10 }, { x: x + 28, y: y - 16 }, PALETTE.green, 7);
         }
       }
     }

@@ -71,6 +71,7 @@ export const KID_LOOKS: readonly { name: string; look: KidLook }[] = [
       hair: 0x6b4423,
       shoes: 0x1a8f7a,
       hairLength: 'short',
+      bottoms: 'shorts',
       armPose: 'rightUp',
     },
   },
@@ -120,7 +121,44 @@ export const KID_LOOKS: readonly { name: string; look: KidLook }[] = [
       armPose: 'leftUp',
     },
   },
+  // Two more boys. In this drawing style the read is almost entirely hair
+  // length plus a scarf, so these are short-haired, collarless, and in
+  // colours the existing kids don't already use.
+  {
+    name: 'sam',
+    look: {
+      top: 0x3f7fd0,
+      bottom: 0x2f4858,
+      hair: 0x1f1a15,
+      shoes: PALETTE.orange,
+      hairLength: 'short',
+      bottoms: 'shorts',
+      armPose: 'rightUp',
+    },
+  },
+  {
+    name: 'leo',
+    look: {
+      top: 0x2fa87a,
+      bottom: 0x8a5a2b,
+      hair: 0xc46a1f,
+      shoes: 0x2f2b3a,
+      hairLength: 'short',
+      bottoms: 'shorts',
+      armPose: 'bothDown',
+    },
+  },
 ];
+
+/**
+ * The look belonging to one character, by name.
+ *
+ * Falls back to the first kid so a save naming a character that no longer
+ * exists still draws somebody rather than nothing.
+ */
+export function getKidLook(name: string): KidLook {
+  return (KID_LOOKS.find((kid) => kid.name === name) ?? KID_LOOKS[0]!).look;
+}
 
 export class BootScene extends Phaser.Scene {
   constructor() {

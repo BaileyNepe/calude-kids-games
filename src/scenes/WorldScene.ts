@@ -17,7 +17,8 @@ import { gameState } from '../shared/gameState';
 import { getCat, getLevel, levelProgress } from '../shared/pets';
 import { CoinDisplay, DoodleButton } from '../shared/ui';
 import { sfx } from '../shared/audio';
-import { KID_LOOKS } from './BootScene';
+import { KID_LOOKS, getKidLook } from './BootScene';
+import { kidTextureWithOutfit } from '../shared/art/wardrobe';
 import { Wanderer } from '../world/Wanderer';
 import { EmoteBar } from '../world/EmoteBar';
 import { Player, WALK_BOUNDS } from '../world/Player';
@@ -245,7 +246,13 @@ export class WorldScene extends Phaser.Scene {
   /** The player's avatar, plus tap-to-walk on the ground. */
   private buildPlayer(): void {
     const character = gameState.character ?? DEFAULT_KID;
-    this.player = new Player(this, `kid-${character}`, CENTRE_X, 548, gameState.wearing.hat);
+    const texture = kidTextureWithOutfit(
+      this,
+      character,
+      getKidLook(character),
+      gameState.wearing.outfit,
+    );
+    this.player = new Player(this, texture, CENTRE_X, 548, gameState.wearing.hat);
     this.lastPlayerPos = { x: this.player.x, y: this.player.y };
 
     // Tapping open ground walks there. Registered on the scene rather than

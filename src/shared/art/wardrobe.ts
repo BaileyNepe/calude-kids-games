@@ -21,7 +21,8 @@ import {
   dot,
   type Point,
 } from './doodle';
-import { WARDROBE, type WardrobeItem } from '../wardrobe';
+import { WARDROBE, getItem, type WardrobeItem } from '../wardrobe';
+import { makeKidTexture, type KidLook } from './sprites';
 
 function bake(
   scene: Phaser.Scene,
@@ -267,8 +268,42 @@ export function makeWardrobeTextures(scene: Phaser.Scene): void {
     } else if (item.slot === 'collar') {
       bake(scene, key, 160, 90, (g, rng) => drawCollar(g, rng, item));
     }
-    // Outfits have no standalone texture: they recolour the character.
+    // Outfits have no standalone texture: they recolour the character, and
+    // are baked on demand by kidTextureWithOutfit().
   }
+}
+
+/**
+ * The texture key for a character wearing an outfit, baked on demand.
+ *
+ * Hats and collars are laid over the sprite, but an outfit *is* the tunic,
+ * so the character has to be redrawn in the outfit's colours instead. Five
+ * characters times four outfits is twenty extra kid textures, which is more
+ * than boot should be drawing for the sake of the one combination actually
+ * being worn — so each is baked the first time it's asked for.
+ *
+ * Anything unrecognised (a null outfit, or an id from a hand-edited save)
+ * falls back to the plain character, so the avatar always draws.
+ */
+export function kidTextureWithOutfit(
+  scene: Phaser.Scene,
+  character: string,
+  look: KidLook,
+  outfitId: string | null,
+): string {
+  const plain = `kid-${character}`;
+  if (outfitId === null) return plain;
+
+  const item = getItem(outfitId);
+  if (item === undefined || item.slot !== 'outfit') return plain;
+
+  // The tunic is drawn in two colours; single-colour outfits use the one
+  // colour for both halves rather than leaving the bottom untouched.
+  return makeKidTexture(scene, `${character}-${item.id}`, {
+    ...look,
+    top: item.colour,
+    bottom: item.accent ?? item.colour,
+  });
 }
 
 /**

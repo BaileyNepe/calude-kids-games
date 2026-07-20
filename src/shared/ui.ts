@@ -222,8 +222,12 @@ export class QuestionBanner extends Phaser.GameObjects.Container {
   /** The fraction picture itself. */
   private visualPicture: Phaser.GameObjects.Graphics | null = null;
 
+  /** Kept so the text can be shrunk to fit the card it sits on. */
+  private readonly bannerWidth: number;
+
   constructor(scene: Phaser.Scene, x: number, y: number, width = 620) {
     super(scene, x, y);
+    this.bannerWidth = width;
 
     const height = 128;
     const bg = scene.add.graphics();
@@ -251,8 +255,10 @@ export class QuestionBanner extends Phaser.GameObjects.Container {
    * Shows a new question with a small pop, so the child notices it changed.
    *
    * Written questions get "= ?" appended here, keeping the maths engine
-   * presentation-free. Fraction questions instead show a shaded picture
-   * below the banner and ask how much is shaded.
+   * presentation-free — except the ones that aren't equations, like place
+   * value, where the prompt is the number being asked *about*. Fraction
+   * questions instead show a shaded picture below the banner and ask how
+   * much is shaded.
    */
   setQuestion(question: Question): void {
     this.clearVisual();
@@ -285,7 +291,15 @@ export class QuestionBanner extends Phaser.GameObjects.Container {
       this.visualPicture = picture;
     } else {
       this.text.setFontSize(68);
-      this.text.setText(`${question.prompt} = ?`);
+      this.text.setText(question.isEquation ? `${question.prompt} = ?` : question.prompt);
+
+      // "835215 + 156345 = ?" is wider than the card at full size, and ran
+      // off the end of it. Text width scales with the font size, so one
+      // pass lands it inside. Floored so it never becomes unreadable.
+      const maxWidth = this.bannerWidth - 48;
+      if (this.text.width > maxWidth) {
+        this.text.setFontSize(Math.max(34, Math.floor((68 * maxWidth) / this.text.width)));
+      }
     }
 
     this.scene.tweens.add({

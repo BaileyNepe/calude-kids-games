@@ -64,6 +64,17 @@ describe('GameState persistence', () => {
     expect(second.math.mode).toBe('hard');
   });
 
+  it('remembers the newer operations too, not just the original five', () => {
+    const first = new GameState();
+    first.load();
+    first.setMath({ operations: ['decimal', 'percent', 'exponent', 'placeValue'], mode: 'medium' });
+
+    const second = new GameState();
+    second.load();
+    expect(second.math.operations).toEqual(['decimal', 'percent', 'exponent', 'placeValue']);
+    expect(second.math.mode).toBe('medium');
+  });
+
   it('writes to storage on every change', () => {
     const state = new GameState();
     state.load();

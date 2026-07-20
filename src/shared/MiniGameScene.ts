@@ -20,7 +20,7 @@ import {
   SCENES,
   textStyle,
 } from './config';
-import { DifficultyTracker, type Question } from './mathEngine';
+import { DifficultyTracker, type MathSettings, type Question } from './mathEngine';
 import { gameState, type GameId } from './gameState';
 import { getLevel, rollReward } from './pets';
 import { showRewardOverlay } from './rewardOverlay';
@@ -80,6 +80,19 @@ export abstract class MiniGameScene extends Phaser.Scene {
   /** Removes the previous question's answer choices. */
   protected abstract clearQuestion(): void;
 
+  /**
+   * The maths settings this game should use.
+   *
+   * The player's chosen operations, unless a game physically cannot ask one
+   * of them — Build a Number spells the answer out in digit blocks, so it
+   * has no way to express a half. Overriding here rather than filtering
+   * after the fact keeps the player's saved choices untouched: switch to a
+   * game that *can* ask fractions and they are back.
+   */
+  protected mathSettings(): MathSettings {
+    return gameState.math;
+  }
+
   /* --- Lifecycle ----------------------------------------------------- */
 
   create(): void {
@@ -101,8 +114,10 @@ export abstract class MiniGameScene extends Phaser.Scene {
 
     this.banner = new QuestionBanner(this, CENTRE_X, 86);
 
+    // Clear of the banner: at 162 the top of this text ran under the
+    // banner's bottom edge and its hand-drawn overshoot.
     this.instructionLabel = this.add
-      .text(CENTRE_X, 162, '', textStyle(26, '#2f2b3a'))
+      .text(CENTRE_X, 178, '', textStyle(26, '#2f2b3a'))
       .setOrigin(0.5)
       .setAlpha(0.85);
   }
@@ -118,7 +133,7 @@ export abstract class MiniGameScene extends Phaser.Scene {
   protected startRound(): void {
     const best = gameState.getProgress(this.gameId).highestTier;
     const level = getLevel(gameState.level);
-    this.difficulty = new DifficultyTracker(Math.max(0, best - 1), gameState.math, {
+    this.difficulty = new DifficultyTracker(Math.max(0, best - 1), this.mathSettings(), {
       min: level.minTier,
       max: level.maxTier,
     });

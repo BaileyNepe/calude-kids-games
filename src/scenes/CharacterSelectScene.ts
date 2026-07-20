@@ -7,12 +7,18 @@
  */
 
 import Phaser from 'phaser';
-import { CENTRE_X, DESIGN_HEIGHT, SCENES, textStyle } from '../shared/config';
+import { CENTRE_X, DESIGN_HEIGHT, DESIGN_WIDTH, SCENES, textStyle } from '../shared/config';
 import { PALETTE, makeRng, seedFrom, doodleShape, doodleRectPoints } from '../shared/art/doodle';
 import { gameState } from '../shared/gameState';
 import { DoodleButton } from '../shared/ui';
 import { sfx } from '../shared/audio';
 import { KID_LOOKS } from './BootScene';
+
+/** Space between character tiles. */
+const TILE_GAP = 20;
+
+/** The widest the row of tiles may be, leaving a margin either side. */
+const ROW_MAX_WIDTH = DESIGN_WIDTH - 80;
 
 export class CharacterSelectScene extends Phaser.Scene {
   private selected: string = KID_LOOKS[0]!.name;
@@ -53,10 +59,14 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   private buildTiles(): void {
-    const width = 216;
-    const gap = 20;
+    const { width, height } = this.tileSize();
+    const gap = TILE_GAP;
     const total = KID_LOOKS.length * width + (KID_LOOKS.length - 1) * gap;
     const startX = CENTRE_X - total / 2 + width / 2;
+
+    // The sprite is 230px wide before scaling; keep a little air either side
+    // of it however narrow the tiles have had to become.
+    const scale = Math.min(0.62, (width - 18) / 230);
 
     KID_LOOKS.forEach((kid, index) => {
       const x = startX + index * (width + gap);
@@ -64,11 +74,11 @@ export class CharacterSelectScene extends Phaser.Scene {
 
       const bg = this.add.graphics();
       tile.add(bg);
-      tile.add(this.add.image(0, 10, `kid-${kid.name}`).setScale(0.62));
+      tile.add(this.add.image(0, 10, `kid-${kid.name}`).setScale(scale));
 
       // No setSize(): on a Container it offsets the hit area by half the size.
       tile.setInteractive(
-        new Phaser.Geom.Rectangle(-width / 2, -190, width, 380),
+        new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height),
         Phaser.Geom.Rectangle.Contains,
       );
       tile.on('pointerdown', () => {
@@ -82,8 +92,23 @@ export class CharacterSelectScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * How big each tile can be.
+   *
+   * Fixed at 216 wide until there are too many characters to fit across the
+   * screen, then shared out evenly — adding a character should never push
+   * one off the edge.
+   */
+  private tileSize(): { width: number; height: number } {
+    const count = KID_LOOKS.length;
+    const available = (ROW_MAX_WIDTH - TILE_GAP * (count - 1)) / count;
+    return { width: Math.min(216, available), height: 380 };
+  }
+
   /** Highlights the chosen character. */
   private refresh(): void {
+    const { width, height } = this.tileSize();
+
     for (const [name, tile] of this.tiles) {
       const chosen = name === this.selected;
       const bg = tile.getAt(0) as Phaser.GameObjects.Graphics;
@@ -91,7 +116,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       bg.clear();
       doodleShape(
         bg,
-        doodleRectPoints(rng, -108, -190, 216, 380, 3),
+        doodleRectPoints(rng, -width / 2, -height / 2, width, height, 3),
         chosen ? PALETTE.sun : PALETTE.white,
         { offset: 3, lineWidth: chosen ? 7 : 4 },
       );

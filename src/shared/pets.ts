@@ -105,7 +105,7 @@ export const LEVELS: readonly LevelDef[] = [
     name: 'Mountain',
     blurb: 'Cold peaks and brave cats.',
     minTier: 3,
-    maxTier: 4,
+    maxTier: 5,
     colour: 0x8a93b8,
   },
   {
@@ -113,7 +113,7 @@ export const LEVELS: readonly LevelDef[] = [
     name: 'Space',
     blurb: 'The rarest cats of all live here.',
     minTier: 4,
-    maxTier: 4,
+    maxTier: 6,
     colour: PALETTE.purple,
   },
 ];

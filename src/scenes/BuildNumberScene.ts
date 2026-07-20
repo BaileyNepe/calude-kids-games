@@ -14,7 +14,8 @@ import Phaser from 'phaser';
 import { MiniGameScene } from '../shared/MiniGameScene';
 import { CENTRE_X, DESIGN_HEIGHT, DESIGN_WIDTH, SCENES, textStyle } from '../shared/config';
 import { PALETTE, makeRng, seedFrom, doodleShape, doodleRectPoints } from '../shared/art/doodle';
-import type { Question } from '../shared/mathEngine';
+import { NON_INTEGER_OPERATIONS, type MathSettings, type Question } from '../shared/mathEngine';
+import { gameState } from '../shared/gameState';
 import { sfx } from '../shared/audio';
 import { floatingText } from '../shared/ui';
 
@@ -46,6 +47,20 @@ export class BuildNumberScene extends MiniGameScene {
     super(SCENES.buildNumber, 'buildNumber');
     // The tray offers more digits than are needed, so there's a real choice.
     this.optionCount = 4;
+  }
+
+  /**
+   * Whole-number questions only.
+   *
+   * The answer is spelled out one digit per slot, so a fraction or a decimal
+   * has no representation here — "0.5" would become three blocks, one of
+   * them a full stop, and `Number('.')` is NaN. If the player has only
+   * picked non-integer operations, adding stands in for this game alone.
+   */
+  protected override mathSettings(): MathSettings {
+    const settings = gameState.math;
+    const operations = settings.operations.filter((op) => !NON_INTEGER_OPERATIONS.includes(op));
+    return { ...settings, operations: operations.length > 0 ? operations : ['add'] };
   }
 
   protected buildBackground(): void {
@@ -187,8 +202,10 @@ export class BuildNumberScene extends MiniGameScene {
     );
 
     // The tray holds every digit of the answer plus a few decoys, shuffled.
+    // The cap keeps the tray on screen; at 8 blocks it is 1084px wide of the
+    // 1280 available, which still leaves a six-digit answer two decoys.
     const tray = [...digits];
-    while (tray.length < Math.min(7, digits.length + 3)) {
+    while (tray.length < Math.min(8, digits.length + 3)) {
       const decoy = Phaser.Math.Between(0, 9);
       // Allow duplicates only if the answer genuinely contains them.
       const needed = digits.filter((d) => d === decoy).length;
