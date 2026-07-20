@@ -1,0 +1,27 @@
+{
+  "name": "math-world",
+  "version": "1.0.0",
+  "description": "Math World — a colourful maths game for kids, with collectible pet cats.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ios:sync": "npm run build && cap sync ios",
+    "ios:open": "npm run ios:sync && cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/ios": "^8.4.2",
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.7",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit + user-scalable=no: stops double-tap zoom fighting the
+         game's own tap handling on tablets. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#7ecbff" />
+    <meta name="description" content="Math World — a colourful maths game with collectible pet cats." />
+    <title>Math World</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #7ecbff;
+        /* Stops iOS rubber-band scrolling while dragging fish around. */
+        overscroll-behavior: none;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', system-ui, sans-serif;
+      }
+      #game {
+        width: 100%;
+        height: 100%;
+      }
+      canvas {
+        display: block;
+        /* Without this, dragging a fish scrolls the page on iOS and Android
+           instead of reaching the game. Not optional. */
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

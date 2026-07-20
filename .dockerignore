@@ -1,0 +1,16 @@
+# Everything here is either rebuilt inside the image or irrelevant to it.
+# Keeping it out shrinks the build context and stops a stale local dist/
+# from ever ending up in the image.
+node_modules/
+dist/
+ios/
+.git/
+.github/
+.netlify/
+.vercel/
+.DS_Store
+*.local
+npm-debug.log*
+Dockerfile
+.dockerignore
+README.md

@@ -1,0 +1,29 @@
+# Netlify deploy config.
+#
+# Connect the repo at app.netlify.com and it will pick this up automatically —
+# every push rebuilds and redeploys. No settings to fill in by hand.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# The game is a single page; anything not found should still serve it.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# The bundle filename contains a content hash, so it can be cached forever.
+# index.html must not be, or players would keep getting the old build.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
