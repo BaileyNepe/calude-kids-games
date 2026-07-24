@@ -29,8 +29,27 @@ export const MIN_TAP_SIZE = 88;
 /** Coins awarded for one correct answer. */
 export const COINS_PER_CORRECT = 5;
 
-/** How many correct answers make up one round of a mini-game. */
-export const QUESTIONS_PER_ROUND = 8;
+/** Hearts the player starts each round with. */
+export const LIVES_PER_ROUND = 3;
+
+/**
+ * From this level, some questions must be *typed* on the number pad
+ * rather than picked from choices — recall without recognition, which is
+ * a real step up in difficulty.
+ */
+export const TYPED_ANSWER_MIN_LEVEL = 6;
+
+/** Chance that an eligible question becomes a typed one. */
+export const TYPED_ANSWER_CHANCE = 0.3;
+
+/**
+ * How much faster/livelier the mini-games get per level, as a multiplier.
+ * Level 1 is 1.0; the cap keeps the top levels brisk rather than frantic —
+ * this is still a game for children.
+ */
+export function challengeFor(level: number): number {
+  return Math.min(1.6, 1 + (level - 1) * 0.045);
+}
 
 /**
  * Canvas text is rasterised at 1x by default, which looks soft once the
@@ -66,6 +85,16 @@ export const SCENES = {
   buildNumber: 'BuildNumberScene',
   catCafe: 'CatCafeScene',
   rocketLaunch: 'RocketLaunchScene',
+  frogPond: 'FrogPondScene',
+  honeyHive: 'HoneyHiveScene',
+  treasureDive: 'TreasureDiveScene',
+  magicPotion: 'MagicPotionScene',
+  numberTrain: 'NumberTrainScene',
+  ufoCatch: 'UfoCatchScene',
+  memoryMatch: 'MemoryMatchScene',
+  patternPath: 'PatternPathScene',
+  balanceScales: 'BalanceScalesScene',
+  castleKnock: 'CastleKnockScene',
   pets: 'PetsScene',
   settings: 'SettingsScene',
   shop: 'ShopScene',

@@ -17,6 +17,7 @@ import {
   doodleRectPoints,
 } from '../shared/art/doodle';
 import type { Question } from '../shared/mathEngine';
+import { placeHiddenGem } from '../shared/hiddenGem';
 import { fitText } from '../shared/ui';
 
 /** One tappable answer plank on the deck. */
@@ -86,8 +87,11 @@ export class PirateShipScene extends MiniGameScene {
       ease: 'Sine.easeInOut',
     });
 
-    // Skull flag at the masthead.
-    const flag = this.add.image(DESIGN_WIDTH / 2 + 92, 210, 'skull-flag').setScale(0.72).setDepth(-4);
+    // Skull flag at the masthead. Kept low, just above where the mast
+    // meets the sail: it used to fly high in the sky at y=210, where the
+    // dark cloth sat directly behind the instruction text ("Add them up!")
+    // and made it unreadable whenever the instruction ran long.
+    const flag = this.add.image(DESIGN_WIDTH / 2 + 60, 322, 'skull-flag').setScale(0.72).setDepth(-4);
     this.tweens.add({
       targets: flag,
       angle: { from: -3, to: 3 },
@@ -112,6 +116,9 @@ export class PirateShipScene extends MiniGameScene {
       .text(DESIGN_WIDTH / 2, DESIGN_HEIGHT - 30, 'Tap the treasure with the right answer!', textStyle(26, '#eaf6ff'))
       .setOrigin(0.5)
       .setDepth(10);
+
+    // A secret gem bobbing in the waves by the bow.
+    placeHiddenGem(this, 'gem-pirate-sea', 120, 690, { scale: 0.4, depth: -8 });
   }
 
   protected presentQuestion(question: Question): void {

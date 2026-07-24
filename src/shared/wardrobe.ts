@@ -10,8 +10,14 @@
 
 import { PALETTE } from './art/doodle';
 
-/** Where an item is worn. */
-export type ItemSlot = 'hat' | 'outfit' | 'collar';
+/**
+ * Where an item is worn.
+ *
+ * 'emote' items unlock extra reaction faces on the world's emote bar, and
+ * 'effect' items restyle the celebration burst played on correct answers —
+ * neither is "worn" on the body, but they buy, save and sell identically.
+ */
+export type ItemSlot = 'hat' | 'outfit' | 'collar' | 'emote' | 'effect';
 
 /** One thing that can be bought and worn. */
 export interface WardrobeItem {
@@ -91,6 +97,51 @@ export const WARDROBE: readonly WardrobeItem[] = [
     accent: PALETTE.red,
     blurb: 'For a proper maths monarch.',
   },
+  {
+    id: 'hat-flower',
+    name: 'Flower Crown',
+    slot: 'hat',
+    price: 350,
+    colour: PALETTE.pink,
+    accent: PALETTE.green,
+    blurb: 'Fresh from the meadow.',
+  },
+  {
+    id: 'hat-top',
+    name: 'Fancy Top Hat',
+    slot: 'hat',
+    price: 500,
+    colour: 0x2f2b3a,
+    accent: PALETTE.red,
+    blurb: 'Terribly distinguished.',
+  },
+  {
+    id: 'hat-halo',
+    name: 'Golden Halo',
+    slot: 'hat',
+    price: 800,
+    colour: PALETTE.sun,
+    accent: PALETTE.yellow,
+    blurb: 'For absolutely perfect scores.',
+  },
+  {
+    id: 'hat-astro',
+    name: 'Space Helmet',
+    slot: 'hat',
+    price: 1200,
+    colour: 0xbfe8ff,
+    accent: 0x9ca8b8,
+    blurb: 'Comes with its own whoosh.',
+  },
+  {
+    id: 'hat-royal',
+    name: 'Royal Crown',
+    slot: 'hat',
+    price: 2500,
+    colour: PALETTE.sun,
+    accent: PALETTE.purple,
+    blurb: 'The grandest hat in the game.',
+  },
 
   /* --- Outfits ---------------------------------------------------- */
   {
@@ -129,6 +180,42 @@ export const WARDROBE: readonly WardrobeItem[] = [
     accent: PALETTE.blue,
     blurb: 'Ready for Level 5.',
   },
+  {
+    id: 'outfit-ninja',
+    name: 'Ninja Suit',
+    slot: 'outfit',
+    price: 400,
+    colour: 0x3a3548,
+    accent: 0x2a2636,
+    blurb: 'Silent. Swift. Good at times tables.',
+  },
+  {
+    id: 'outfit-gold',
+    name: 'Golden Outfit',
+    slot: 'outfit',
+    price: 1000,
+    colour: PALETTE.sun,
+    accent: PALETTE.orange,
+    blurb: 'Shines from across the meadow.',
+  },
+  {
+    id: 'outfit-royal',
+    name: 'Royal Robes',
+    slot: 'outfit',
+    price: 1500,
+    colour: PALETTE.purple,
+    accent: PALETTE.sun,
+    blurb: 'Fit for the Rainbow Realm.',
+  },
+  {
+    id: 'outfit-star',
+    name: 'Starlight Suit',
+    slot: 'outfit',
+    price: 2500,
+    colour: 0x2f2b54,
+    accent: PALETTE.sun,
+    blurb: 'Woven from actual night sky.',
+  },
 
   /* --- Cat collars ------------------------------------------------ */
   {
@@ -164,6 +251,107 @@ export const WARDROBE: readonly WardrobeItem[] = [
     accent: PALETTE.orange,
     blurb: 'For a cat of taste.',
   },
+  {
+    id: 'collar-rainbow',
+    name: 'Rainbow Collar',
+    slot: 'collar',
+    price: 600,
+    colour: PALETTE.pink,
+    accent: PALETTE.teal,
+    blurb: 'Every cat deserves a rainbow.',
+  },
+  {
+    id: 'collar-star',
+    name: 'Star Collar',
+    slot: 'collar',
+    price: 900,
+    colour: 0x2f2b54,
+    accent: PALETTE.sun,
+    blurb: 'Twinkles when they trot.',
+  },
+  {
+    id: 'collar-diamond',
+    name: 'Diamond Collar',
+    slot: 'collar',
+    price: 1200,
+    colour: 0xe8f0f7,
+    accent: PALETTE.teal,
+    blurb: 'Outrageously sparkly.',
+  },
+  {
+    id: 'collar-royal',
+    name: 'Royal Collar',
+    slot: 'collar',
+    price: 3000,
+    colour: PALETTE.purple,
+    accent: PALETTE.sun,
+    blurb: 'The finest collar ever made.',
+  },
+
+  /* --- Emotes ------------------------------------------------------ *
+   * The first four faces on the emote bar are free; these unlock the
+   * rest. Ids follow `emote-<face name>` so the bar can look them up.
+   */
+  {
+    id: 'emote-love',
+    name: 'Love',
+    slot: 'emote',
+    price: 150,
+    colour: 0xffb0c9,
+    blurb: 'Heart eyes for special moments.',
+  },
+  {
+    id: 'emote-cool',
+    name: 'Cool',
+    slot: 'emote',
+    price: 250,
+    colour: PALETTE.teal,
+    blurb: 'Sunglasses. Indoors. Always.',
+  },
+  {
+    id: 'emote-sleepy',
+    name: 'Sleepy',
+    slot: 'emote',
+    price: 400,
+    colour: 0xc9bfe8,
+    blurb: 'For after a lot of maths.',
+  },
+  {
+    id: 'emote-starstruck',
+    name: 'Stars',
+    slot: 'emote',
+    price: 600,
+    colour: PALETTE.sun,
+    blurb: 'When a legendary cat appears.',
+  },
+
+  /* --- Effects ------------------------------------------------------ *
+   * Restyle the burst played on every correct answer, game-wide.
+   */
+  {
+    id: 'effect-hearts',
+    name: 'Heart Burst',
+    slot: 'effect',
+    price: 350,
+    colour: PALETTE.red,
+    blurb: 'Right answers shower hearts.',
+  },
+  {
+    id: 'effect-confetti',
+    name: 'Confetti',
+    slot: 'effect',
+    price: 500,
+    colour: PALETTE.pink,
+    blurb: 'A party in every answer.',
+  },
+  {
+    id: 'effect-fireworks',
+    name: 'Fireworks',
+    slot: 'effect',
+    price: 900,
+    colour: PALETTE.orange,
+    blurb: 'The grandest sparkle money can buy.',
+  },
 ];
 
 /** Looks up an item by id. */
@@ -180,5 +368,7 @@ export function itemsForSlot(slot: ItemSlot): WardrobeItem[] {
 export const SHOP_TABS: readonly { slot: ItemSlot; label: string }[] = [
   { slot: 'hat', label: 'Hats' },
   { slot: 'outfit', label: 'Outfits' },
-  { slot: 'collar', label: 'Cat Collars' },
+  { slot: 'collar', label: 'Collars' },
+  { slot: 'emote', label: 'Emotes' },
+  { slot: 'effect', label: 'Effects' },
 ];

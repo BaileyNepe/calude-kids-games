@@ -183,6 +183,114 @@ function drawHat(
       break;
     }
 
+    case 'hat-flower': {
+      // A ring of flowers following the curve of the head.
+      const petals = [PALETTE.pink, PALETTE.white, PALETTE.yellow, PALETTE.pink, PALETTE.white];
+      for (let i = 0; i < 5; i++) {
+        const t = i / 4;
+        const fx = cx - 48 + t * 96;
+        const fy = baseY - 10 - Math.sin(t * Math.PI) * 22;
+        for (let p = 0; p < 5; p++) {
+          const angle = (p / 5) * Math.PI * 2;
+          dot(g, fx + Math.cos(angle) * 10, fy + Math.sin(angle) * 10, 7, petals[i]!);
+        }
+        dot(g, fx, fy, 6, accent);
+      }
+      break;
+    }
+
+    case 'hat-top': {
+      // Tall cylinder, wide brim, and a coloured band.
+      doodleShape(
+        g,
+        [
+          { x: cx - 36, y: baseY - 4 },
+          { x: cx - 32, y: baseY - 96 },
+          { x: cx + 32, y: baseY - 96 },
+          { x: cx + 36, y: baseY - 4 },
+        ],
+        item.colour,
+        { offset: 1, lineWidth: 5 },
+      );
+      doodleShape(g, doodleEllipsePoints(rng, cx, baseY, 62, 13, 2, 18), item.colour, {
+        offset: 0,
+        lineWidth: 5,
+      });
+      doodleShape(
+        g,
+        [
+          { x: cx - 34, y: baseY - 18 },
+          { x: cx - 33, y: baseY - 36 },
+          { x: cx + 33, y: baseY - 36 },
+          { x: cx + 34, y: baseY - 18 },
+        ],
+        accent,
+        { offset: 0, lineWidth: 3 },
+      );
+      break;
+    }
+
+    case 'hat-halo': {
+      // A glowing ring floating above the head, with twinkles.
+      const ring = doodleEllipsePoints(rng, cx, baseY - 66, 48, 15, 2, 20);
+      doodleShape(g, ring, item.colour, { offset: 0, lineWidth: 5 });
+      const inner = doodleEllipsePoints(rng, cx, baseY - 66, 32, 8, 1.5, 16);
+      doodleShape(g, inner, accent, { offset: 0, lineWidth: 3 });
+      drawStar(g, cx - 58, baseY - 78, 9, item.colour);
+      drawStar(g, cx + 58, baseY - 58, 9, item.colour);
+      break;
+    }
+
+    case 'hat-astro': {
+      // A glass bubble helmet with a rim and a little antenna.
+      g.fillStyle(item.colour, 0.55);
+      g.fillCircle(cx, baseY - 44, 56);
+      doodleShape(g, doodleEllipsePoints(rng, cx, baseY - 44, 56, 56, 2.5, 22), item.colour, {
+        offset: 0,
+        lineWidth: 5,
+      });
+      // Shine.
+      doodleShape(g, doodleEllipsePoints(rng, cx - 24, baseY - 66, 10, 16, 1.5, 12), PALETTE.white, {
+        offset: 0,
+        lineWidth: 0,
+      });
+      // Neck rim.
+      doodleShape(g, doodleEllipsePoints(rng, cx, baseY + 4, 44, 12, 2, 16), accent, {
+        offset: 0,
+        lineWidth: 4,
+      });
+      // Antenna.
+      doodleStroke(g, rng, { x: cx + 40, y: baseY - 84 }, { x: cx + 54, y: baseY - 108 }, accent, 4);
+      dot(g, cx + 56, baseY - 110, 6, PALETTE.red);
+      break;
+    }
+
+    case 'hat-royal': {
+      // The grand crown: taller points, an inner cap, and far more jewels.
+      doodleShape(g, doodleEllipsePoints(rng, cx, baseY - 30, 40, 26, 2.5, 18), PALETTE.red, {
+        offset: 0,
+        lineWidth: 4,
+      });
+      const crown: Point[] = [
+        { x: cx - 54, y: baseY },
+        { x: cx - 54, y: baseY - 62 },
+        { x: cx - 30, y: baseY - 32 },
+        { x: cx - 12, y: baseY - 72 },
+        { x: cx + 12, y: baseY - 72 },
+        { x: cx + 30, y: baseY - 32 },
+        { x: cx + 54, y: baseY - 62 },
+        { x: cx + 54, y: baseY },
+      ];
+      doodleShape(g, crown, item.colour, { offset: 1, lineWidth: 5 });
+      dot(g, cx - 54, baseY - 66, 7, item.accent ?? PALETTE.purple);
+      dot(g, cx, baseY - 76, 8, item.accent ?? PALETTE.purple);
+      dot(g, cx + 54, baseY - 66, 7, item.accent ?? PALETTE.purple);
+      dot(g, cx - 28, baseY - 12, 6, PALETTE.teal);
+      dot(g, cx, baseY - 10, 7, PALETTE.red);
+      dot(g, cx + 28, baseY - 12, 6, PALETTE.teal);
+      break;
+    }
+
     default:
       break;
   }

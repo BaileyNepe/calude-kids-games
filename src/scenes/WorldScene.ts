@@ -15,7 +15,9 @@ import { CENTRE_X, DESIGN_HEIGHT, DESIGN_WIDTH, FONT, SCENES, textStyle } from '
 import { PALETTE, makeRng, seedFrom, doodleShape, doodleRectPoints } from '../shared/art/doodle';
 import { gameState } from '../shared/gameState';
 import { getCat, getLevel, levelProgress } from '../shared/pets';
-import { CoinDisplay, DoodleButton } from '../shared/ui';
+import { makeCatTexture } from '../shared/art/sprites';
+import { placeHiddenGem } from '../shared/hiddenGem';
+import { CoinDisplay, DoodleButton, fitText, floatingText } from '../shared/ui';
 import { sfx } from '../shared/audio';
 import { KID_LOOKS, getKidLook } from './BootScene';
 import { kidTextureWithOutfit } from '../shared/art/wardrobe';
@@ -28,7 +30,7 @@ import { PetCompanion } from '../world/PetCompanion';
 const DEFAULT_KID = 'girl';
 
 /**
- * How many cats follow the player at once. A complete collection is 52
+ * How many cats follow the player at once. A complete collection is 152
  * cats; all of them on screen would be an unreadable stampede, so the most
  * recently collected few come along.
  */
@@ -41,6 +43,12 @@ interface PortalSpec {
   colour: number;
   /** Draws the little preview picture inside the card. */
   illustrate: (scene: Phaser.Scene, x: number, y: number) => Phaser.GameObjects.GameObject[];
+  /**
+   * The level at which this game opens. Omitted means always available —
+   * which the original seven games are, so nobody who was already playing
+   * loses a game they had.
+   */
+  unlockLevel?: number;
 }
 
 export class WorldScene extends Phaser.Scene {
@@ -106,10 +114,20 @@ export class WorldScene extends Phaser.Scene {
       bushes.fillCircle(x + r * 0.7, y + 5, r * 0.8);
       bushes.fillCircle(x - r * 0.7, y + 5, r * 0.75);
     }
+
+    // A secret, for the observant: a gem half-hidden at a bush's foot.
+    placeHiddenGem(this, 'world-bush', 205, 500, { scale: 0.4, depth: -6 });
   }
 
-  /** The mini-game cards across the top. */
+  /** The mini-game cards across the top, in two rows of seven and six. */
   private buildPortals(): void {
+    // Cat textures are baked on demand now (152 cats is too many for
+    // boot), so make sure the two that appear on cards exist first.
+    for (const id of ['ginger', 'calico']) {
+      const cat = getCat(id);
+      if (cat !== undefined) makeCatTexture(this, cat.id, cat.look, 'idle');
+    }
+
     const portals: PortalSpec[] = [
       {
         key: SCENES.balloonPop,
@@ -173,57 +191,219 @@ export class WorldScene extends Phaser.Scene {
         key: SCENES.rocketLaunch,
         title: 'Rocket',
         colour: PALETTE.red,
-        illustrate: (s, x, y) => [s.add.image(x, y, 'rocket').setScale(0.42)],
+        illustrate: (s, x, y) => [s.add.image(x, y, 'rocket').setScale(0.25)],
+      },
+      {
+        key: SCENES.frogPond,
+        title: 'Frog Pond',
+        colour: 0x5fb84a,
+        unlockLevel: 2,
+        illustrate: (s, x, y) => [
+          s.add.image(x + 16, y + 12, 'lily-pad').setScale(0.4),
+          s.add.image(x - 20, y - 6, 'frog').setScale(0.38),
+        ],
+      },
+      {
+        key: SCENES.honeyHive,
+        title: 'Honey Hive',
+        colour: PALETTE.yellow,
+        unlockLevel: 3,
+        illustrate: (s, x, y) => [
+          s.add.image(x + 18, y + 4, 'hive').setScale(0.27),
+          s.add.image(x - 24, y - 8, 'bee').setScale(0.38),
+        ],
+      },
+      {
+        key: SCENES.treasureDive,
+        title: 'Treasure Dive',
+        colour: PALETTE.sea,
+        unlockLevel: 4,
+        illustrate: (s, x, y) => [
+          s.add.image(x + 12, y + 14, 'treasure-chest').setScale(0.27),
+          s.add.image(x - 24, y - 12, 'bubble').setScale(0.36),
+        ],
+      },
+      {
+        key: SCENES.memoryMatch,
+        title: 'Memory Cards',
+        colour: 0xc98d55,
+        unlockLevel: 4,
+        illustrate: (s, x, y) => [
+          s.add.image(x - 16, y + 2, 'memory-card-back').setScale(0.32),
+          s.add.image(x + 20, y + 6, 'memory-card-face').setScale(0.32),
+        ],
+      },
+      {
+        key: SCENES.castleKnock,
+        title: 'Castle Knock',
+        colour: 0xd9705f,
+        unlockLevel: 5,
+        illustrate: (s, x, y) => [
+          s.add.image(x - 18, y - 2, 'block-blank').setScale(0.3),
+          s.add.image(x - 18, y - 34, 'block-blank').setScale(0.3),
+          s.add.image(x + 26, y + 12, 'star-gold').setScale(0.6),
+        ],
+      },
+      {
+        key: SCENES.numberTrain,
+        title: 'Number Train',
+        colour: 0x3f7fd0,
+        unlockLevel: 5,
+        illustrate: (s, x, y) => [s.add.image(x, y + 4, 'train-engine').setScale(0.27)],
+      },
+      {
+        key: SCENES.magicPotion,
+        title: 'Magic Potion',
+        colour: 0x8b7fe8,
+        unlockLevel: 6,
+        illustrate: (s, x, y) => [
+          s.add.image(x + 16, y + 8, 'cauldron').setScale(0.25),
+          s.add.image(x - 22, y - 4, 'bottle-pink').setScale(0.32),
+        ],
+      },
+      {
+        key: SCENES.patternPath,
+        title: 'Patterns',
+        colour: 0x7ac94a,
+        unlockLevel: 6,
+        illustrate: (s, x, y) => [
+          s.add.image(x - 24, y, 'star-teal').setScale(0.5),
+          s.add.image(x, y, 'star-pink').setScale(0.5),
+          s.add.image(x + 24, y, 'star-gold').setScale(0.5),
+        ],
+      },
+      {
+        key: SCENES.ufoCatch,
+        title: 'UFO Catch',
+        colour: 0x5f549c,
+        unlockLevel: 7,
+        illustrate: (s, x, y) => [
+          s.add.image(x - 8, y - 10, 'ufo').setScale(0.3),
+          s.add.image(x + 28, y + 16, 'asteroid').setScale(0.23),
+        ],
+      },
+      {
+        key: SCENES.balanceScales,
+        title: 'Scales',
+        colour: 0xe0b34c,
+        unlockLevel: 8,
+        illustrate: (s, x, y) => [
+          s.add.image(x - 20, y + 4, 'block-blank').setScale(0.26),
+          s.add.image(x + 20, y + 4, 'coin').setScale(0.6),
+        ],
       },
     ];
 
-    // Seven cards across, sized to fit the screen with even gutters.
-    const gap = 12;
-    const cardWidth = (DESIGN_WIDTH - 40 - gap * (portals.length - 1)) / portals.length;
-    const startX = 20 + cardWidth / 2;
+    // Two rows — nine cards then eight — sized to fit with even gutters.
+    const gap = 10;
+    const perRow = 9;
+    const cardWidth = (DESIGN_WIDTH - 32 - gap * (perRow - 1)) / perRow;
+    const height = 158;
 
     portals.forEach((portal, index) => {
-      this.createPortalCard(portal, startX + index * (cardWidth + gap), 268, cardWidth);
+      const row = Math.floor(index / perRow);
+      const column = index % perRow;
+      const inThisRow = row === 0 ? perRow : portals.length - perRow;
+      const rowWidth = inThisRow * cardWidth + (inThisRow - 1) * gap;
+      const startX = (DESIGN_WIDTH - rowWidth) / 2 + cardWidth / 2;
+      this.createPortalCard(
+        portal,
+        startX + column * (cardWidth + gap),
+        row === 0 ? 192 : 362,
+        cardWidth,
+        height,
+      );
     });
   }
 
-  /** Builds one tappable portal card. */
-  private createPortalCard(portal: PortalSpec, x: number, y: number, width: number): void {
-    const height = 196;
+  /** Builds one tappable portal card, padlocked until its level. */
+  private createPortalCard(
+    portal: PortalSpec,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): void {
+    const locked = portal.unlockLevel !== undefined && gameState.level < portal.unlockLevel;
     const container = this.add.container(x, y).setDepth(5);
 
     const bg = this.add.graphics();
     const rng = makeRng(seedFrom(`portal-${portal.title}`));
-    doodleShape(bg, doodleRectPoints(rng, -width / 2, -height / 2, width, height, 3), portal.colour, {
-      offset: 4,
-      lineWidth: 5,
-    });
+    doodleShape(
+      bg,
+      doodleRectPoints(rng, -width / 2, -height / 2, width, height, 3),
+      locked ? 0xd6cde4 : portal.colour,
+      { offset: 4, lineWidth: 5 },
+    );
     container.add(bg);
 
     const inset = this.add.graphics();
     doodleShape(
       inset,
-      doodleRectPoints(rng, -width / 2 + 12, -height / 2 + 44, width - 24, 96, 2.5),
-      PALETTE.paper,
+      doodleRectPoints(rng, -width / 2 + 12, -height / 2 + 40, width - 24, 80, 2.5),
+      locked ? 0xe8e2f0 : PALETTE.paper,
       { offset: 2, lineWidth: 3 },
     );
     container.add(inset);
 
-    container.add(
-      this.add
-        .text(0, -height / 2 + 22, portal.title, textStyle(19, '#2f2b3a', { fontStyle: 'bold' }))
-        .setOrigin(0.5),
-    );
-    container.add(portal.illustrate(this, 0, 4));
-    container.add(
-      this.add.text(0, height / 2 - 22, 'Play', textStyle(20, '#3d3752')).setOrigin(0.5),
-    );
+    const title = this.add
+      .text(0, -height / 2 + 21, portal.title, textStyle(18, locked ? '#8a7fa3' : '#2f2b3a', { fontStyle: 'bold' }))
+      .setOrigin(0.5);
+    fitText(title, width - 16, 18, 12);
+    container.add(title);
+
+    const pictures = portal.illustrate(this, 0, 1);
+    container.add(pictures);
+
+    if (locked) {
+      // Dim the preview, and hang a little padlock over it.
+      for (const picture of pictures) {
+        (picture as Phaser.GameObjects.Image).setAlpha(0.3);
+      }
+      const lock = this.add.graphics();
+      lock.lineStyle(6, 0x5b5470, 1);
+      lock.beginPath();
+      lock.arc(0, -10, 14, Math.PI, Math.PI * 2);
+      lock.strokePath();
+      lock.fillStyle(0x5b5470, 1);
+      lock.fillRoundedRect(-20, -10, 40, 32, 6);
+      lock.fillStyle(0xd6cde4, 1);
+      lock.fillCircle(0, 5, 5);
+      container.add(lock);
+
+      container.add(
+        this.add
+          .text(0, height / 2 - 18, `Level ${portal.unlockLevel}`, textStyle(16, '#8a7fa3', { fontStyle: 'bold' }))
+          .setOrigin(0.5),
+      );
+    } else {
+      container.add(
+        this.add.text(0, height / 2 - 18, 'Play', textStyle(17, '#3d3752')).setOrigin(0.5),
+      );
+    }
 
     // No setSize(): on a Container it offsets the hit area by half the size.
     container.setInteractive(
       new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height),
       Phaser.Geom.Rectangle.Contains,
     );
+
+    if (locked) {
+      // A locked card explains itself rather than doing nothing.
+      container.on('pointerdown', () => {
+        sfx.wrong();
+        this.tweens.add({
+          targets: container,
+          angle: { from: -2, to: 2 },
+          duration: 80,
+          yoyo: true,
+          repeat: 2,
+          onComplete: () => container.setAngle(0),
+        });
+        floatingText(this, x, y - height / 2 - 10, `Reach level ${portal.unlockLevel}!`, '#5b5470');
+      });
+      return;
+    }
 
     container.on('pointerover', () =>
       this.tweens.add({ targets: container, scale: 1.05, duration: 140 }),
@@ -263,15 +443,17 @@ export class WorldScene extends Phaser.Scene {
       this.player.walkTo(pointer.worldX, pointer.worldY);
     });
 
-    // Every cat the player has collected comes along for the walk.
-    // Every cat the player has collected comes along, wearing whatever
-    // collar has been bought for them. Capped so a full 52-cat collection
-    // doesn't turn the hub into a stampede.
+    // The most recently collected cats come along, wearing whatever collar
+    // has been bought for them. Capped so a full collection doesn't turn
+    // the hub into a stampede. Their idle textures are baked here on
+    // demand — nothing bakes 152 cats at boot any more.
     const collar = gameState.catWearing.collar;
     gameState.pets
       .filter((id) => getCat(id) !== undefined)
       .slice(-MAX_COMPANIONS)
       .forEach((id, index) => {
+        const cat = getCat(id)!;
+        makeCatTexture(this, cat.id, cat.look, 'idle');
         this.companions.push(
           new PetCompanion(this, id, index, CENTRE_X - 70 - index * 40, 640, collar),
         );

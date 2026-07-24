@@ -22,6 +22,7 @@ import {
   doodleLine,
   doodleArc,
   doodleCircle,
+  fillShape,
   strokeShape,
   dot,
   type Point,
@@ -270,15 +271,15 @@ export function makeCatTexture(
 }
 
 /**
- * Bakes the three reacting expressions for one cat, if they don't already
- * exist.
+ * Bakes every expression for one cat, if they don't already exist.
  *
- * Called by whichever scene is about to star a particular cat. Baking all
- * of these up front for a 52-cat catalog would cost hundreds of textures
- * and a visible pause at boot, when only one cat's faces are ever needed
- * at a time.
+ * Called by whichever scene is about to star a particular cat. With a
+ * 152-cat catalog nothing is baked at boot any more — even the idle pose
+ * is drawn on demand — so this now includes 'idle' alongside the three
+ * reacting faces. Baking is idempotent, so calling it repeatedly is cheap.
  */
 export function ensureCatFaces(scene: Phaser.Scene, id: string, look: CatLook): void {
+  makeCatTexture(scene, id, look, 'idle');
   makeCatTexture(scene, id, look, 'open');
   makeCatTexture(scene, id, look, 'happy');
   makeCatTexture(scene, id, look, 'noseUp');
@@ -958,6 +959,462 @@ export function makeCoinTexture(scene: Phaser.Scene): string {
   bake(scene, key, 80, 80, (g, rng) => {
     doodleShape(g, doodleEllipsePoints(rng, 40, 40, 30, 30, 2, 18), PALETTE.sun);
     doodleShape(g, doodleEllipsePoints(rng, 40, 40, 19, 19, 1.5, 16), PALETTE.yellow, {
+      offset: 0,
+      lineWidth: 3,
+    });
+  });
+  return key;
+}
+
+/* ------------------------------------------------------------------ *
+ * Hearts — the lives display in every mini-game.
+ * ------------------------------------------------------------------ */
+
+/** The classic parametric heart, scaled to fit and flipped for screen-y. */
+function heartPoints(cx: number, cy: number, size: number): Point[] {
+  const pts: Point[] = [];
+  const steps = 26;
+  for (let i = 0; i < steps; i++) {
+    const t = (i / steps) * Math.PI * 2;
+    const x = 16 * Math.sin(t) ** 3;
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    pts.push({ x: cx + (x * size) / 16, y: cy - (y * size) / 16 });
+  }
+  return pts;
+}
+
+/** Bakes the full and empty hearts used by the lives HUD. */
+export function makeHeartTextures(scene: Phaser.Scene): void {
+  bake(scene, 'heart-full', 64, 64, (g) => {
+    doodleShape(g, heartPoints(32, 27, 22), PALETTE.red, { offset: 1, lineWidth: 4 });
+    // A little shine so a full heart reads as glossy and alive.
+    dot(g, 24, 20, 4, 0xffb0b0);
+  });
+  bake(scene, 'heart-empty', 64, 64, (g) => {
+    fillShape(g, heartPoints(32, 27, 22), 0xd6cde4, 0.45);
+    strokeShape(g, heartPoints(32, 27, 22), 0x8a7fa3, 4);
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Frog Pond
+ * ------------------------------------------------------------------ */
+
+/** Bakes a lily pad with a pale centre for the answer number. */
+export function makeLilyPadTexture(scene: Phaser.Scene): string {
+  const key = 'lily-pad';
+  bake(scene, key, 190, 120, (g, rng) => {
+    doodleShape(g, doodleEllipsePoints(rng, 95, 60, 82, 46, 3, 22), 0x4a9c4f);
+    // Vein lines radiating from the stem end.
+    for (const angle of [-0.6, -0.2, 0.2, 0.6]) {
+      doodleStroke(
+        g,
+        rng,
+        { x: 95, y: 60 },
+        { x: 95 + Math.cos(angle) * 66, y: 60 + Math.sin(angle) * 34 },
+        0x3a7a3d,
+        3,
+        1.5,
+      );
+    }
+    // Pale panel so a dark number always sits on a light field.
+    doodleShape(g, doodleEllipsePoints(rng, 95, 60, 52, 30, 2, 18), PALETTE.paper, {
+      offset: 0,
+      lineWidth: 3,
+    });
+  });
+  return key;
+}
+
+/** Bakes the hopping frog. */
+export function makeFrogTexture(scene: Phaser.Scene): string {
+  const key = 'frog';
+  bake(scene, key, 160, 150, (g, rng) => {
+    const cx = 80;
+    // Back legs bulging out at the sides.
+    doodleShape(g, doodleEllipsePoints(rng, cx - 48, 112, 22, 16, 2, 14), 0x4fa83f);
+    doodleShape(g, doodleEllipsePoints(rng, cx + 48, 112, 22, 16, 2, 14), 0x4fa83f);
+    // Body.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 92, 48, 42, 3, 20), 0x5fb84a);
+    // Belly.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 106, 30, 22, 2, 16), 0xd9edb8, {
+      offset: 0,
+      lineWidth: 3,
+    });
+    // Eyes on top, googly.
+    for (const dir of [-1, 1]) {
+      doodleShape(g, doodleEllipsePoints(rng, cx + dir * 24, 44, 17, 17, 1.5, 14), 0x5fb84a);
+      dot(g, cx + dir * 24, 44, 10, PALETTE.white);
+      dot(g, cx + dir * 22, 45, 5);
+    }
+    // Wide contented mouth.
+    doodleArc(g, cx, 76, 24, 12, true, PALETTE.ink, 4);
+    // Front feet.
+    doodleShape(g, doodleEllipsePoints(rng, cx - 20, 130, 13, 8, 1.5, 12), 0x4fa83f, {
+      offset: 0,
+      lineWidth: 3,
+    });
+    doodleShape(g, doodleEllipsePoints(rng, cx + 20, 130, 13, 8, 1.5, 12), 0x4fa83f, {
+      offset: 0,
+      lineWidth: 3,
+    });
+  });
+  return key;
+}
+
+/* ------------------------------------------------------------------ *
+ * Honey Hive
+ * ------------------------------------------------------------------ */
+
+/** Bakes a bumblebee. The scene hangs a numbered sign under it. */
+export function makeBeeTexture(scene: Phaser.Scene): string {
+  const key = 'bee';
+  bake(scene, key, 170, 150, (g, rng) => {
+    const cx = 85;
+    const cy = 88;
+    // Wings first, behind the body.
+    for (const dir of [-1, 1]) {
+      doodleShape(g, doodleEllipsePoints(rng, cx + dir * 26, cy - 44, 24, 16, 2, 14), PALETTE.white, {
+        offset: 0,
+        lineWidth: 3,
+      });
+    }
+    // Striped body.
+    doodleShape(g, doodleEllipsePoints(rng, cx, cy, 46, 34, 3, 20), PALETTE.sun);
+    doodleStroke(g, rng, { x: cx - 12, y: cy - 32 }, { x: cx - 16, y: cy + 32 }, 0x2f2b3a, 9, 1.5);
+    doodleStroke(g, rng, { x: cx + 14, y: cy - 30 }, { x: cx + 10, y: cy + 32 }, 0x2f2b3a, 9, 1.5);
+    // Stinger.
+    doodleShape(
+      g,
+      [
+        { x: cx + 44, y: cy - 6 },
+        { x: cx + 62, y: cy },
+        { x: cx + 44, y: cy + 6 },
+      ],
+      0x2f2b3a,
+      { offset: 0, lineWidth: 2 },
+    );
+    // Face on the left end.
+    dot(g, cx - 30, cy - 8, 6);
+    dot(g, cx - 28, cy - 10, 2, PALETTE.white);
+    doodleArc(g, cx - 30, cy + 6, 8, 5, true, PALETTE.ink, 3);
+    // Antennae.
+    doodleStroke(g, rng, { x: cx - 34, y: cy - 26 }, { x: cx - 46, y: cy - 44 }, PALETTE.ink, 3, 1.5);
+    dot(g, cx - 46, cy - 44, 4);
+  });
+  return key;
+}
+
+/** Bakes the beehive the bees fly home to. */
+export function makeHiveTexture(scene: Phaser.Scene): string {
+  const key = 'hive';
+  bake(scene, key, 220, 240, (g, rng) => {
+    const cx = 110;
+    // Stacked golden rings, wider in the middle.
+    const rings = [
+      { y: 60, rx: 52 },
+      { y: 100, rx: 74 },
+      { y: 144, rx: 84 },
+      { y: 188, rx: 66 },
+    ];
+    for (const ring of rings) {
+      doodleShape(g, doodleEllipsePoints(rng, cx, ring.y, ring.rx, 30, 3, 20), 0xd9a03a);
+    }
+    // Entrance hole.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 196, 20, 16, 1.5, 14), 0x5a3d1a, {
+      offset: 0,
+      lineWidth: 3,
+    });
+    // Hanging loop on top.
+    doodleArc(g, cx, 34, 18, 16, false, PALETTE.ink, 5);
+  });
+  return key;
+}
+
+/* ------------------------------------------------------------------ *
+ * Treasure Dive
+ * ------------------------------------------------------------------ */
+
+/** Bakes a translucent bubble big enough to hold an answer. */
+export function makeBubbleTexture(scene: Phaser.Scene): string {
+  const key = 'bubble';
+  bake(scene, key, 170, 170, (g, rng) => {
+    const c = 85;
+    // A soft, watery fill — deliberately translucent so the sea shows through.
+    g.fillStyle(0xdff4ff, 0.55);
+    g.fillCircle(c, c, 74);
+    strokeShape(g, doodleEllipsePoints(rng, c, c, 74, 74, 2.5, 24), 0x8fd0e8, 5);
+    // Shine.
+    doodleArc(g, c - 32, c - 28, 18, 14, false, 0xffffff, 6);
+    dot(g, c + 34, c + 30, 5, 0xffffff);
+  });
+  return key;
+}
+
+/** Bakes the treasure chest sitting on the sea floor. */
+export function makeChestTexture(scene: Phaser.Scene): string {
+  const key = 'treasure-chest';
+  bake(scene, key, 240, 180, (g, rng) => {
+    // Lid — a squashed dome.
+    doodleShape(g, doodleEllipsePoints(rng, 120, 84, 88, 40, 3, 20), PALETTE.brown);
+    // Body.
+    doodleShape(g, doodleRectPoints(rng, 32, 84, 176, 74, 3), 0x9c5f30);
+    // Bands.
+    doodleStroke(g, rng, { x: 70, y: 52 }, { x: 70, y: 156 }, PALETTE.darkBrown, 7);
+    doodleStroke(g, rng, { x: 170, y: 52 }, { x: 170, y: 156 }, PALETTE.darkBrown, 7);
+    // Lock.
+    doodleShape(g, doodleRectPoints(rng, 106, 92, 28, 30, 2), PALETTE.sun, {
+      offset: 1,
+      lineWidth: 4,
+    });
+    // A few escaped coins.
+    doodleCircle(g, rng, 40, 164, 10, PALETTE.sun, 1.5);
+    doodleCircle(g, rng, 206, 168, 9, PALETTE.sun, 1.5);
+  });
+  return key;
+}
+
+/* ------------------------------------------------------------------ *
+ * Magic Potion
+ * ------------------------------------------------------------------ */
+
+/** Bakes a potion bottle with a pale label for the answer. */
+export function makeBottleTexture(scene: Phaser.Scene, name: string, colour: number): string {
+  const key = `bottle-${name}`;
+  bake(scene, key, 150, 210, (g, rng) => {
+    const cx = 75;
+    // Cork.
+    doodleShape(g, doodleRectPoints(rng, cx - 17, 10, 34, 24, 2), PALETTE.brown, {
+      offset: 1,
+      lineWidth: 4,
+    });
+    // Neck.
+    doodleShape(g, doodleRectPoints(rng, cx - 14, 32, 28, 40, 2), colour, {
+      offset: 1,
+      lineWidth: 4,
+    });
+    // Round body full of potion.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 134, 54, 62, 3, 22), colour);
+    // Shine.
+    doodleShape(g, doodleEllipsePoints(rng, cx - 24, 108, 10, 18, 1.5, 12), PALETTE.white, {
+      offset: 0,
+      lineWidth: 0,
+    });
+    // Pale label so the number is always readable on any colour.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 138, 38, 26, 2, 16), PALETTE.paper, {
+      offset: 0,
+      lineWidth: 3,
+    });
+  });
+  return key;
+}
+
+/** Bakes the wizard's cauldron. */
+export function makeCauldronTexture(scene: Phaser.Scene): string {
+  const key = 'cauldron';
+  bake(scene, key, 260, 210, (g, rng) => {
+    const cx = 130;
+    // Legs.
+    for (const dir of [-1, 0, 1]) {
+      doodleStroke(g, rng, { x: cx + dir * 56, y: 160 }, { x: cx + dir * 68, y: 196 }, 0x2a2636, 9);
+    }
+    // Pot.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 110, 96, 66, 3, 24), 0x3d3a4a);
+    // Rim.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 54, 84, 20, 2.5, 20), 0x2a2636);
+    // Glowing green brew.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 52, 70, 13, 2, 18), 0x8fd45f, {
+      offset: 0,
+      lineWidth: 3,
+    });
+    // Rising bubbles.
+    doodleCircle(g, rng, cx - 30, 26, 7, 0x8fd45f, 1.5);
+    doodleCircle(g, rng, cx + 22, 18, 5, 0x8fd45f, 1.5);
+    doodleCircle(g, rng, cx + 44, 32, 4, 0x8fd45f, 1);
+  });
+  return key;
+}
+
+/* ------------------------------------------------------------------ *
+ * Number Train
+ * ------------------------------------------------------------------ */
+
+/** Bakes the engine, facing left, pulling wagons that arrive from the right. */
+export function makeEngineTexture(scene: Phaser.Scene): string {
+  const key = 'train-engine';
+  bake(scene, key, 270, 200, (g, rng) => {
+    // Boiler.
+    doodleShape(g, doodleRectPoints(rng, 24, 84, 140, 66, 3), PALETTE.red);
+    // Nose.
+    doodleShape(g, doodleEllipsePoints(rng, 28, 117, 16, 33, 2, 14), 0xc43a3a);
+    // Cab.
+    doodleShape(g, doodleRectPoints(rng, 164, 44, 84, 106, 3), PALETTE.blue);
+    // Cab window.
+    doodleShape(g, doodleRectPoints(rng, 180, 60, 52, 42, 2), PALETTE.sky, {
+      offset: 1,
+      lineWidth: 4,
+    });
+    // Roof.
+    doodleShape(g, doodleRectPoints(rng, 154, 32, 104, 16, 2), 0x2f4858);
+    // Chimney with a puff ring.
+    doodleShape(g, doodleRectPoints(rng, 52, 44, 28, 42, 2), 0x2f4858);
+    doodleShape(g, doodleEllipsePoints(rng, 66, 36, 22, 10, 2, 14), 0x2f4858, {
+      offset: 0,
+      lineWidth: 3,
+    });
+    // Wheels.
+    for (const x of [64, 120, 204]) {
+      doodleCircle(g, rng, x, 162, 24, 0x2a2636, 2);
+      doodleCircle(g, rng, x, 162, 10, 0x8a8a94, 1.5);
+    }
+  });
+  return key;
+}
+
+/** Bakes a wagon with a pale panel for the answer. */
+export function makeWagonTexture(scene: Phaser.Scene, name: string, colour: number): string {
+  const key = `wagon-${name}`;
+  bake(scene, key, 210, 160, (g, rng) => {
+    // Box.
+    doodleShape(g, doodleRectPoints(rng, 18, 26, 174, 88, 3), colour);
+    // Pale panel for the number.
+    doodleShape(g, doodleRectPoints(rng, 42, 42, 126, 56, 2), PALETTE.paper, {
+      offset: 1,
+      lineWidth: 3,
+    });
+    // Wheels.
+    for (const x of [62, 148]) {
+      doodleCircle(g, rng, x, 128, 21, 0x2a2636, 2);
+      doodleCircle(g, rng, x, 128, 8, 0x8a8a94, 1.5);
+    }
+    // Coupling hook.
+    doodleStroke(g, rng, { x: 4, y: 112 }, { x: 20, y: 112 }, 0x2a2636, 6);
+  });
+  return key;
+}
+
+/* ------------------------------------------------------------------ *
+ * UFO Catch
+ * ------------------------------------------------------------------ */
+
+/** Bakes the friendly flying saucer. */
+export function makeUfoTexture(scene: Phaser.Scene): string {
+  const key = 'ufo';
+  bake(scene, key, 250, 150, (g, rng) => {
+    const cx = 125;
+    // Glass dome with a little pilot cat silhouette.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 56, 46, 38, 2.5, 18), 0xbfe8ff);
+    dot(g, cx, 62, 14, 0x3c3550);
+    // Ear triangles poking up, so the pilot reads as a cat.
+    fillShape(
+      g,
+      [
+        { x: cx - 14, y: 56 },
+        { x: cx - 4, y: 56 },
+        { x: cx - 11, y: 42 },
+      ],
+      0x3c3550,
+    );
+    fillShape(
+      g,
+      [
+        { x: cx + 4, y: 56 },
+        { x: cx + 14, y: 56 },
+        { x: cx + 11, y: 42 },
+      ],
+      0x3c3550,
+    );
+    // Saucer body.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 92, 104, 32, 3, 24), 0x9ca8b8);
+    // Underside.
+    doodleShape(g, doodleEllipsePoints(rng, cx, 114, 46, 14, 2, 16), 0x6b7a8a, {
+      offset: 0,
+      lineWidth: 3,
+    });
+    // Rim lights.
+    const lightColours = [PALETTE.red, PALETTE.sun, PALETTE.teal, PALETTE.pink];
+    for (let i = 0; i < 4; i++) {
+      dot(g, cx - 66 + i * 44, 92, 7, lightColours[i]!);
+    }
+  });
+  return key;
+}
+
+/* ------------------------------------------------------------------ *
+ * Hidden gems, and the memory game's cards.
+ * ------------------------------------------------------------------ */
+
+/** Bakes the hidden gem: a faceted teal diamond with a glint. */
+export function makeGemTexture(scene: Phaser.Scene): string {
+  const key = 'gem';
+  bake(scene, key, 100, 100, (g, rng) => {
+    const cx = 50;
+    const outline: Point[] = [
+      { x: cx - 34, y: 36 },
+      { x: cx - 16, y: 16 },
+      { x: cx + 16, y: 16 },
+      { x: cx + 34, y: 36 },
+      { x: cx, y: 84 },
+    ];
+    doodleShape(g, outline, PALETTE.teal, { offset: 1, lineWidth: 4 });
+    // Facet lines.
+    doodleStroke(g, rng, { x: cx - 34, y: 36 }, { x: cx + 34, y: 36 }, 0x2f8a84, 3, 1);
+    doodleStroke(g, rng, { x: cx - 16, y: 16 }, { x: cx - 10, y: 36 }, 0x2f8a84, 3, 1);
+    doodleStroke(g, rng, { x: cx + 16, y: 16 }, { x: cx + 10, y: 36 }, 0x2f8a84, 3, 1);
+    doodleStroke(g, rng, { x: cx - 10, y: 36 }, { x: cx, y: 84 }, 0x2f8a84, 3, 1);
+    doodleStroke(g, rng, { x: cx + 10, y: 36 }, { x: cx, y: 84 }, 0x2f8a84, 3, 1);
+    // Glint.
+    dot(g, cx - 12, 26, 4, PALETTE.white);
+    drawSparkle(g, cx + 26, 20, 8, PALETTE.white);
+  });
+  return key;
+}
+
+/** Bakes the face and back of the memory game's cards. */
+export function makeMemoryCardTextures(scene: Phaser.Scene): void {
+  bake(scene, 'memory-card-face', 160, 200, (g, rng) => {
+    doodleShape(g, doodleRectPoints(rng, 10, 10, 140, 180, 3), PALETTE.paper, {
+      offset: 2,
+      lineWidth: 6,
+    });
+    doodleShape(g, doodleRectPoints(rng, 24, 24, 112, 152, 2), PALETTE.white, {
+      offset: 0,
+      lineWidth: 3,
+    });
+  });
+  bake(scene, 'memory-card-back', 160, 200, (g, rng) => {
+    doodleShape(g, doodleRectPoints(rng, 10, 10, 140, 180, 3), PALETTE.purple, {
+      offset: 2,
+      lineWidth: 6,
+    });
+    doodleShape(g, doodleRectPoints(rng, 26, 26, 108, 148, 2), 0x8a5fc4, {
+      offset: 0,
+      lineWidth: 3,
+    });
+    drawSparkle(g, 80, 100, 26, PALETTE.sun);
+    drawSparkle(g, 46, 52, 10, PALETTE.white);
+    drawSparkle(g, 116, 150, 10, PALETTE.white);
+  });
+}
+
+/** Bakes a lumpy asteroid with a pale crater for the answer. */
+export function makeAsteroidTexture(scene: Phaser.Scene): string {
+  const key = 'asteroid';
+  bake(scene, key, 180, 180, (g, rng) => {
+    const c = 90;
+    // Deliberately lumpy: few segments, big wobble.
+    doodleShape(g, doodleEllipsePoints(rng, c, c, 72, 66, 9, 11), 0x8a8a94);
+    // Craters.
+    doodleShape(g, doodleEllipsePoints(rng, c - 34, c - 30, 13, 10, 2, 12), 0x6b6b78, {
+      offset: 0,
+      lineWidth: 3,
+    });
+    doodleShape(g, doodleEllipsePoints(rng, c + 38, c + 28, 10, 8, 2, 12), 0x6b6b78, {
+      offset: 0,
+      lineWidth: 3,
+    });
+    // Pale centre so the number reads clearly.
+    doodleShape(g, doodleEllipsePoints(rng, c, c, 44, 34, 2.5, 18), PALETTE.paper, {
       offset: 0,
       lineWidth: 3,
     });

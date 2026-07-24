@@ -99,22 +99,44 @@ into the iOS project.
 | Build a Number | Drag digit blocks to construct the answer |
 | Cat Cafe | Serve your cats by paying the right number of coins |
 | Rocket Launch | Fuel a rocket — streaks push it higher into space |
+| Frog Pond | Tap the lily pad and the frog leaps across to it |
+| Honey Hive | Tap the bee carrying the right answer home to the hive |
+| Treasure Dive | Pop the rising bubble with the right answer |
+| Memory Cards | Cards flip face-down — remember where the answer went |
+| Castle Knock | Slingshot: knock down the tower flying the right banner |
+| Number Train | Couple the right wagon to the engine |
+| Magic Potion | Pour the right potion bottle into the cauldron |
+| Patterns | Finish the caterpillar's number sequence |
+| UFO Catch | The saucer beams up the right space rock |
+| Balance Scales | Find the missing number that levels the seesaw |
 
-Winning a round rolls for a cat. Collected cats follow the player around the
-world hub.
+The original seven games are always open; the newer ten unlock as the
+player levels up (level 2 through 8, shown as padlocks on the hub). The
+harder games — the logic ones especially — pay more coins per answer and
+carry a bonus to the cat-drop chance.
+
+Every round gives **three hearts**. A wrong answer costs one (the question
+can still be retried); losing all three ends the round with no cat. Winning
+a round rolls for a cat — guaranteed up to level 5, and from level 6 the
+cats grow shyer (a won round may pay out bonus coins instead). Collected
+cats follow the player around the world hub.
+
+From level 6, roughly one question in three must be **typed** on a drawn
+number pad instead of picked from choices — recall rather than
+recognition. (Fraction and decimal questions always stay multiple-choice.)
+
+A handful of **hidden gems** are tucked into scenery around the world —
+each pays out coins once, ever, to whoever spots it.
 
 ## Levels
 
-There are **52 cats across 5 levels**. Only cats from your current level can
-drop, and collecting all of them unlocks the next:
-
-| Level | Cats | Difficulty |
-| --- | --- | --- |
-| 1 · Meadow | 12 | Sums to ~20 |
-| 2 · Seaside | 10 | Sums to ~30 |
-| 3 · Forest | 10 | Up to 50 |
-| 4 · Mountain | 10 | Up to 100 |
-| 5 · Space | 10 | The hardest tier |
+There are **152 cats across 15 levels**. Only cats from your current level
+can drop, and collecting all of them unlocks the next. The first five levels
+climb the maths tiers from sums-to-20 to six-digit arithmetic; from level 6
+(Jungle, Desert, Candy Land, Volcano, Crystal Caves, Cloud Kingdom, Deep
+Ocean, Fairy Garden, Dreamland, Rainbow Realm) the rounds grow longer, the
+games move a little faster, and the cat-drop chance eases down from 90% to
+50%.
 
 Each level raises the difficulty *floor*, so a child who has worked through
 the Meadow is never dropped back to single-digit sums. The Maths screen still
@@ -123,8 +145,11 @@ chooses which operations to practise.
 ## Shop and character
 
 Pick a character on first launch (changeable later). Coins earned from maths
-buy hats and outfits for your character and collars for your cats in the
-**Shop** — everything bought is worn in the world.
+buy hats and outfits for your character, collars for your cats, extra
+**emotes** for the world's emote bar (the first four faces are free), and
+**celebration effects** — heart bursts, confetti, fireworks — that restyle
+every correct-answer flourish in every game. Prices run from 40 coins to
+3000, so there's always a next thing to save for.
 
 ## Maths
 
@@ -148,7 +173,7 @@ src/
 │   ├── WorldScene.ts        Hub: portals, walking, pets, emotes
 │   ├── SettingsScene.ts     Operation and difficulty pickers
 │   ├── PetsScene.ts         The cat collection
-│   └── …                    The seven mini-games
+│   └── …                    The seventeen mini-games
 ├── world/                   Hub-only pieces (player, wanderers, companions)
 └── shared/
     ├── mathEngine.ts        Question generation, difficulty tiers  ← unit tested

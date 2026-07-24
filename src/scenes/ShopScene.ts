@@ -14,10 +14,11 @@ import { CENTRE_X, DESIGN_WIDTH, SCENES, textStyle } from '../shared/config';
 import { PALETTE, makeRng, seedFrom, doodleShape, doodleRectPoints } from '../shared/art/doodle';
 import { gameState } from '../shared/gameState';
 import { SHOP_TABS, itemsForSlot, type ItemSlot, type WardrobeItem } from '../shared/wardrobe';
-import { CoinDisplay, DoodleButton, createBackButton, floatingText } from '../shared/ui';
+import { CoinDisplay, DoodleButton, createBackButton, fitText, floatingText } from '../shared/ui';
 import { sfx } from '../shared/audio';
 import { CAT_CATALOG, getCat } from '../shared/pets';
 import { HAT_OFFSET_Y, COLLAR_OFFSET_Y, kidTextureWithOutfit } from '../shared/art/wardrobe';
+import { makeCatTexture } from '../shared/art/sprites';
 import { getKidLook } from './BootScene';
 
 export class ShopScene extends Phaser.Scene {
@@ -69,10 +70,11 @@ export class ShopScene extends Phaser.Scene {
 
     this.previewKid = this.add.image(205, 400, this.kidTexture()).setScale(0.62);
 
-    // A cat below, so collars can be previewed too.
+    // A cat below, so collars can be previewed too. Its idle texture is
+    // baked here on demand — cats are no longer baked at boot.
     const firstCat = gameState.pets[0] ?? CAT_CATALOG[0]!.id;
-    const catId = getCat(firstCat) !== undefined ? firstCat : CAT_CATALOG[0]!.id;
-    this.previewCat = this.add.image(205, 596, `cat-${catId}-idle`).setScale(0.5);
+    const cat = getCat(firstCat) ?? CAT_CATALOG[0]!;
+    this.previewCat = this.add.image(205, 596, makeCatTexture(this, cat.id, cat.look, 'idle')).setScale(0.5);
 
     // Character select was only ever shown once, on a brand-new save, so a
     // child who picked in a hurry was stuck with that choice forever. This
@@ -127,10 +129,10 @@ export class ShopScene extends Phaser.Scene {
     }
   }
 
-  /** The row of category tabs. */
+  /** The row of category tabs. Five now, so they're narrower than before. */
   private buildTabs(): void {
-    const width = 220;
-    const gap = 16;
+    const width = 150;
+    const gap = 10;
     const startX = 470 + width / 2;
 
     SHOP_TABS.forEach((tab, index) => {
@@ -139,11 +141,11 @@ export class ShopScene extends Phaser.Scene {
       const container = this.add.container(x, 136);
       const bg = this.add.graphics();
       container.add(bg);
-      container.add(
-        this.add
-          .text(0, 0, tab.label, textStyle(26, '#2f2b3a', { fontStyle: 'bold' }))
-          .setOrigin(0.5),
-      );
+      const label = this.add
+        .text(0, 0, tab.label, textStyle(22, '#2f2b3a', { fontStyle: 'bold' }))
+        .setOrigin(0.5);
+      fitText(label, width - 18, 22, 15);
+      container.add(label);
 
       container.setInteractive(
         new Phaser.Geom.Rectangle(-width / 2, -34, width, 68),
@@ -169,7 +171,7 @@ export class ShopScene extends Phaser.Scene {
       const bg = container.getAt(0) as Phaser.GameObjects.Graphics;
       const rng = makeRng(seedFrom(`shop-tab-${slot}`));
       bg.clear();
-      doodleShape(bg, doodleRectPoints(rng, -110, -34, 220, 68, 3), active ? PALETTE.sun : 0xe4dccb, {
+      doodleShape(bg, doodleRectPoints(rng, -75, -34, 150, 68, 3), active ? PALETTE.sun : 0xe4dccb, {
         offset: 2,
         lineWidth: active ? 5 : 3,
       });
@@ -181,14 +183,15 @@ export class ShopScene extends Phaser.Scene {
     for (const object of this.shelfObjects) object.destroy();
     this.shelfObjects = [];
 
+    // Four columns of three: eleven hats have to fit where six used to.
     const items = itemsForSlot(this.tab);
-    const columns = 3;
-    const cardWidth = 250;
-    const cardHeight = 240;
-    const gapX = 20;
-    const gapY = 18;
+    const columns = 4;
+    const cardWidth = 187;
+    const cardHeight = 178;
+    const gapX = 14;
+    const gapY = 12;
     const startX = 470 + cardWidth / 2;
-    const startY = 306;
+    const startY = 296;
 
     items.forEach((item, index) => {
       const column = index % columns;
@@ -212,10 +215,13 @@ export class ShopScene extends Phaser.Scene {
     height: number,
   ): void {
     const owned = gameState.ownsItem(item.id);
+    // Emotes aren't "worn" — owning one simply unlocks it on the bar.
     const worn =
-      item.slot === 'collar'
-        ? gameState.catWearing.collar === item.id
-        : gameState.wearing[item.slot] === item.id;
+      item.slot === 'emote'
+        ? false
+        : item.slot === 'collar'
+          ? gameState.catWearing.collar === item.id
+          : gameState.wearing[item.slot] === item.id;
 
     const container = this.add.container(x, y);
     const bg = this.add.graphics();
@@ -229,33 +235,57 @@ export class ShopScene extends Phaser.Scene {
     container.add(bg);
 
     // Outfits have no standalone texture, so they show as a colour swatch.
+    // Emotes preview their actual face; effects borrow a fitting texture.
     if (item.slot === 'outfit') {
       const swatch = this.add.graphics();
-      doodleShape(swatch, doodleRectPoints(rng, -44, -86, 88, 76, 3), item.colour, {
+      doodleShape(swatch, doodleRectPoints(rng, -32, -66, 64, 54, 3), item.colour, {
         offset: 2,
         lineWidth: 4,
       });
-      doodleShape(swatch, doodleRectPoints(rng, -44, -14, 88, 34, 3), item.accent ?? item.colour, {
+      doodleShape(swatch, doodleRectPoints(rng, -32, -14, 64, 26, 3), item.accent ?? item.colour, {
         offset: 2,
         lineWidth: 4,
       });
       container.add(swatch);
+    } else if (item.slot === 'emote') {
+      container.add(
+        this.add.image(0, -36, `face-${item.id.slice('emote-'.length)}`).setScale(0.72),
+      );
+    } else if (item.slot === 'effect') {
+      const preview: Record<string, string> = {
+        'effect-hearts': 'heart-full',
+        'effect-confetti': 'star-pink',
+        'effect-fireworks': 'burst-yellow',
+      };
+      container.add(
+        this.add.image(0, -36, preview[item.id] ?? 'star-gold').setScale(item.id === 'effect-fireworks' ? 0.42 : 0.9),
+      );
     } else {
-      container.add(this.add.image(0, -46, `item-${item.id}`).setScale(0.62));
+      container.add(this.add.image(0, -36, `item-${item.id}`).setScale(0.46));
     }
 
+    const name = this.add
+      .text(0, 28, item.name, textStyle(19, '#2f2b3a', { fontStyle: 'bold' }))
+      .setOrigin(0.5);
+    fitText(name, width - 20, 19, 13);
+    container.add(name);
     container.add(
-      this.add.text(0, 40, item.name, textStyle(24, '#2f2b3a', { fontStyle: 'bold' })).setOrigin(0.5),
-    );
-    container.add(
-      this.add.text(0, 68, item.blurb, textStyle(16, '#5b5470', { align: 'center', wordWrap: { width: width - 32 } })).setOrigin(0.5),
+      this.add.text(0, 52, item.blurb, textStyle(12, '#5b5470', { align: 'center', wordWrap: { width: width - 24 } })).setOrigin(0.5),
     );
 
-    // Bottom row: price, "Wear", or "Worn".
-    const label = worn ? 'Worn' : owned ? 'Wear' : `${item.price} coins`;
+    // Bottom row: price, "Wear"/"Use", or "Worn"/"On".
+    const wearWord = item.slot === 'effect' ? 'Use' : 'Wear';
+    const wornWord = item.slot === 'effect' ? 'On' : 'Worn';
+    const label = worn
+      ? wornWord
+      : owned
+        ? item.slot === 'emote'
+          ? 'Owned'
+          : wearWord
+        : `${item.price} coins`;
     const canAfford = owned || gameState.coins >= item.price;
     const action = this.add
-      .text(0, 100, label, textStyle(24, canAfford ? '#2f2b3a' : '#a09aae', { fontStyle: 'bold' }))
+      .text(0, 74, label, textStyle(19, canAfford ? '#2f2b3a' : '#a09aae', { fontStyle: 'bold' }))
       .setOrigin(0.5);
     container.add(action);
 
@@ -291,8 +321,11 @@ export class ShopScene extends Phaser.Scene {
       sfx.tap();
     }
 
-    // Wearing something already worn takes it off again.
-    if (item.slot === 'collar') {
+    // Wearing something already worn takes it off again. Emotes have no
+    // worn state at all — buying one is the whole transaction.
+    if (item.slot === 'emote') {
+      // Nothing to wear; the emote bar checks ownership directly.
+    } else if (item.slot === 'collar') {
       const already = gameState.catWearing.collar === item.id;
       gameState.wearCatItem(already ? null : item.id);
     } else {

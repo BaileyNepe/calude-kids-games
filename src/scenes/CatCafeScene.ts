@@ -18,6 +18,7 @@ import { gameState } from '../shared/gameState';
 import { CAT_CATALOG, getCat } from '../shared/pets';
 import { ensureCatFaces } from '../shared/art/sprites';
 import { TREATS } from './BootScene';
+import { placeHiddenGem } from '../shared/hiddenGem';
 import { sfx } from '../shared/audio';
 import { fitText } from '../shared/ui';
 
@@ -97,6 +98,15 @@ export class CatCafeScene extends MiniGameScene {
       .text(CENTRE_X, DESIGN_HEIGHT - 24, 'Tap the right number of coins', textStyle(25, '#6b4a25'))
       .setOrigin(0.5)
       .setDepth(10);
+
+    // A secret gem dropped by the end of the counter.
+    placeHiddenGem(this, 'gem-cafe-counter', 66, 512, { scale: 0.38, depth: 9 });
+  }
+
+  /** A typed question skips presentQuestion, so the old order would
+   *  linger under the new sum — blank it instead. */
+  protected override onTypedQuestion(): void {
+    this.orderText.setText('');
   }
 
   protected presentQuestion(question: Question): void {

@@ -26,9 +26,26 @@ export type GameId =
   | 'numberNinja'
   | 'buildNumber'
   | 'catCafe'
-  | 'rocketLaunch';
+  | 'rocketLaunch'
+  | 'frogPond'
+  | 'honeyHive'
+  | 'treasureDive'
+  | 'magicPotion'
+  | 'numberTrain'
+  | 'ufoCatch'
+  | 'memoryMatch'
+  | 'patternPath'
+  | 'balanceScales'
+  | 'castleKnock';
 
-/** All mini-game ids, handy for iterating. */
+/**
+ * All mini-game ids, handy for iterating.
+ *
+ * Adding a game here is save-compatible: reconcile() starts from a fresh
+ * save's progress (which includes every id) and only copies over what the
+ * stored save actually has, so an old save simply gains zeroed progress
+ * for the new games.
+ */
 export const GAME_IDS: readonly GameId[] = [
   'balloonPop',
   'pirateShip',
@@ -37,6 +54,16 @@ export const GAME_IDS: readonly GameId[] = [
   'buildNumber',
   'catCafe',
   'rocketLaunch',
+  'frogPond',
+  'honeyHive',
+  'treasureDive',
+  'magicPotion',
+  'numberTrain',
+  'ufoCatch',
+  'memoryMatch',
+  'patternPath',
+  'balanceScales',
+  'castleKnock',
 ];
 
 /** How far the player has got in one mini-game. */
@@ -57,6 +84,11 @@ export interface SaveData {
   coins: number;
   /** Ids of every cat the player has collected. */
   pets: string[];
+  /**
+   * Ids of every hidden gem found. Gems are one-time secrets tucked into
+   * scenery; each pays out coins once and then never reappears.
+   */
+  gems: string[];
   /** Which operations to practise and how hard. */
   math: MathSettings;
   /** The highest level unlocked so far (1-based). */
@@ -65,8 +97,8 @@ export interface SaveData {
   character: string | null;
   /** Ids of every wardrobe item bought. */
   ownedItems: string[];
-  /** What the player is currently wearing. */
-  wearing: { hat: string | null; outfit: string | null };
+  /** What the player is currently wearing. `effect` restyles celebrations. */
+  wearing: { hat: string | null; outfit: string | null; effect: string | null };
   /** What the cats are currently wearing. */
   catWearing: { collar: string | null };
   /** Per-mini-game progress. */
@@ -88,11 +120,12 @@ export function createNewSave(): SaveData {
     version: SCHEMA_VERSION,
     coins: 0,
     pets: [],
+    gems: [],
     math: { ...DEFAULT_MATH_SETTINGS, operations: [...DEFAULT_MATH_SETTINGS.operations] },
     level: 1,
     character: null,
     ownedItems: [],
-    wearing: { hat: null, outfit: null },
+    wearing: { hat: null, outfit: null, effect: null },
     catWearing: { collar: null },
     progress,
   };
@@ -143,6 +176,8 @@ function reconcile(raw: unknown): SaveData {
     coins: numberOr(data.coins, 0),
     // Filter to strings and de-duplicate, in case of a hand-edited save.
     pets: Array.isArray(data.pets) ? [...new Set(data.pets.filter(isString))] : [],
+    // Saves written before gems existed simply start with none found.
+    gems: Array.isArray(data.gems) ? [...new Set(data.gems.filter(isString))] : [],
     math: reconcileMath(data.math),
     // Clamped so a hand-edited save can't skip to a level that doesn't exist.
     level: Math.max(1, Math.min(MAX_LEVEL, Math.floor(numberOr(data.level, 1)))),
@@ -155,6 +190,11 @@ function reconcile(raw: unknown): SaveData {
       outfit:
         typeof wearing === 'object' && wearing !== null && isString(wearing.outfit)
           ? wearing.outfit
+          : null,
+      // Saves written before effects existed simply have none equipped.
+      effect:
+        typeof wearing === 'object' && wearing !== null && isString(wearing.effect)
+          ? wearing.effect
           : null,
     },
     catWearing: {
@@ -283,6 +323,26 @@ export class GameState {
     return true;
   }
 
+  /** Ids of hidden gems found so far. */
+  get gems(): readonly string[] {
+    return this.data.gems;
+  }
+
+  hasGem(id: string): boolean {
+    return this.data.gems.includes(id);
+  }
+
+  /**
+   * Records a found gem.
+   * @returns true if it was newly found, false if already collected.
+   */
+  collectGem(id: string): boolean {
+    if (this.data.gems.includes(id)) return false;
+    this.data.gems.push(id);
+    this.commit();
+    return true;
+  }
+
   /** The highest level unlocked. */
   get level(): number {
     return this.data.level;
@@ -307,7 +367,7 @@ export class GameState {
     return this.data.ownedItems.includes(id);
   }
 
-  get wearing(): Readonly<{ hat: string | null; outfit: string | null }> {
+  get wearing(): Readonly<{ hat: string | null; outfit: string | null; effect: string | null }> {
     return this.data.wearing;
   }
 
@@ -329,7 +389,7 @@ export class GameState {
   }
 
   /** Wears (or removes, when passed null) an item in the given slot. */
-  wear(slot: 'hat' | 'outfit', id: string | null): void {
+  wear(slot: 'hat' | 'outfit' | 'effect', id: string | null): void {
     this.data.wearing[slot] = id;
     this.commit();
   }
@@ -337,6 +397,16 @@ export class GameState {
   /** Puts a collar on the cats, or removes it when passed null. */
   wearCatItem(id: string | null): void {
     this.data.catWearing.collar = id;
+    this.commit();
+  }
+
+  /**
+   * Dev tool only: jumps straight to a level, ignoring collection state.
+   * Reached exclusively through the hidden dev panel (cmd+shift+\) — no
+   * gameplay path calls this.
+   */
+  devSetLevel(level: number): void {
+    this.data.level = Math.max(1, Math.min(MAX_LEVEL, Math.floor(level)));
     this.commit();
   }
 

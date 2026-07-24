@@ -176,6 +176,217 @@ export function showRewardOverlay(
   });
 }
 
+/**
+ * The "the cat got away" overlay.
+ *
+ * Shown when a round is won but the level's catChance roll fails (levels 6
+ * and up). The round still pays out coins, and the tone stays warm — the
+ * player did nothing wrong; the cat was just shy.
+ */
+export function showEscapedOverlay(
+  scene: Phaser.Scene,
+  coins: number,
+  onPlayAgain: () => void,
+  onExit: () => void,
+): void {
+  const layer = scene.add.container(0, 0).setDepth(1000);
+
+  const backdrop = scene.add
+    .rectangle(CENTRE_X, CENTRE_Y, DESIGN_WIDTH, DESIGN_HEIGHT, 0x2f2b3a, 0.62)
+    .setInteractive();
+  layer.add(backdrop);
+
+  const cardWidth = 620;
+  const cardHeight = 480;
+  const card = scene.add.graphics();
+  const rng = makeRng(seedFrom('escaped-card'));
+  doodleShape(
+    card,
+    doodleRectPoints(rng, CENTRE_X - cardWidth / 2, CENTRE_Y - cardHeight / 2, cardWidth, cardHeight, 4),
+    PALETTE.paper,
+    { offset: 5, lineWidth: 7 },
+  );
+  layer.add(card);
+
+  layer.add(
+    scene.add
+      .text(CENTRE_X, CENTRE_Y - 160, 'So close!', {
+        fontFamily: FONT,
+        fontSize: '54px',
+        color: '#2f2b3a',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5),
+  );
+  layer.add(
+    scene.add
+      .text(CENTRE_X, CENTRE_Y - 92, 'A cat peeked out… and scampered away!', {
+        fontFamily: FONT,
+        fontSize: '28px',
+        color: '#5b5470',
+        align: 'center',
+        wordWrap: { width: 520 },
+      })
+      .setOrigin(0.5),
+  );
+
+  // The consolation coins, made a moment of rather than a footnote.
+  const coin = scene.add.image(CENTRE_X - 70, CENTRE_Y + 4, 'coin').setScale(1.1);
+  const amount = scene.add
+    .text(CENTRE_X - 20, CENTRE_Y + 4, `+${coins}`, {
+      fontFamily: FONT,
+      fontSize: '52px',
+      color: '#8a6100',
+      fontStyle: 'bold',
+    })
+    .setOrigin(0, 0.5);
+  layer.add([coin, amount]);
+  scene.tweens.add({
+    targets: coin,
+    angle: { from: -10, to: 10 },
+    duration: 500,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  });
+
+  layer.add(
+    scene.add
+      .text(CENTRE_X, CENTRE_Y + 74, 'Win another round and it might come back!', {
+        fontFamily: FONT,
+        fontSize: '24px',
+        color: '#5b5470',
+      })
+      .setOrigin(0.5),
+  );
+
+  layer.add(
+    new DoodleButton(
+      scene,
+      CENTRE_X - 150,
+      CENTRE_Y + 168,
+      'Play again',
+      () => {
+        layer.destroy();
+        onPlayAgain();
+      },
+      { colour: PALETTE.green, fontSize: 30, width: 270 },
+    ),
+  );
+  layer.add(
+    new DoodleButton(
+      scene,
+      CENTRE_X + 150,
+      CENTRE_Y + 168,
+      'World',
+      () => {
+        layer.destroy();
+        onExit();
+      },
+      { colour: PALETTE.sun, fontSize: 30, width: 270, iconTexture: 'icon-home' },
+    ),
+  );
+
+  sfx.reward();
+  celebrate(scene, CENTRE_X, CENTRE_Y - 40, 10);
+}
+
+/**
+ * The "out of hearts" overlay.
+ *
+ * Shown when the last life is lost mid-round. This is the one place the
+ * game says "not this time": the round ends and no cat is rolled. Even so
+ * the framing stays kind — no buzzer, no red, and an immediate way back in.
+ */
+export function showOutOfLivesOverlay(
+  scene: Phaser.Scene,
+  onTryAgain: () => void,
+  onExit: () => void,
+): void {
+  const layer = scene.add.container(0, 0).setDepth(1000);
+
+  const backdrop = scene.add
+    .rectangle(CENTRE_X, CENTRE_Y, DESIGN_WIDTH, DESIGN_HEIGHT, 0x2f2b3a, 0.62)
+    .setInteractive();
+  layer.add(backdrop);
+
+  const cardWidth = 620;
+  const cardHeight = 460;
+  const card = scene.add.graphics();
+  const rng = makeRng(seedFrom('lives-card'));
+  doodleShape(
+    card,
+    doodleRectPoints(rng, CENTRE_X - cardWidth / 2, CENTRE_Y - cardHeight / 2, cardWidth, cardHeight, 4),
+    PALETTE.paper,
+    { offset: 5, lineWidth: 7 },
+  );
+  layer.add(card);
+
+  layer.add(
+    scene.add
+      .text(CENTRE_X, CENTRE_Y - 150, 'Out of hearts!', {
+        fontFamily: FONT,
+        fontSize: '54px',
+        color: '#2f2b3a',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5),
+  );
+
+  // Three empty hearts, so the reason the round ended is visible at a
+  // glance without a single word of blame.
+  for (let i = 0; i < 3; i++) {
+    const heart = scene.add
+      .image(CENTRE_X - 60 + i * 60, CENTRE_Y - 70, 'heart-empty')
+      .setScale(1.1);
+    layer.add(heart);
+  }
+
+  layer.add(
+    scene.add
+      .text(
+        CENTRE_X,
+        CENTRE_Y + 10,
+        'The cat slipped away this time.\nHave another go — you were so close!',
+        {
+          fontFamily: FONT,
+          fontSize: '27px',
+          color: '#5b5470',
+          align: 'center',
+          wordWrap: { width: 520 },
+        },
+      )
+      .setOrigin(0.5),
+  );
+
+  layer.add(
+    new DoodleButton(
+      scene,
+      CENTRE_X - 150,
+      CENTRE_Y + 148,
+      'Try again',
+      () => {
+        layer.destroy();
+        onTryAgain();
+      },
+      { colour: PALETTE.green, fontSize: 30, width: 270 },
+    ),
+  );
+  layer.add(
+    new DoodleButton(
+      scene,
+      CENTRE_X + 150,
+      CENTRE_Y + 148,
+      'World',
+      () => {
+        layer.destroy();
+        onExit();
+      },
+      { colour: PALETTE.sun, fontSize: 30, width: 270, iconTexture: 'icon-home' },
+    ),
+  );
+}
+
 /** The "new level unlocked" banner, shown after the cat reveal. */
 function announceLevelUp(
   scene: Phaser.Scene,

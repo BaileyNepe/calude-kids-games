@@ -33,8 +33,8 @@ describe('CAT_CATALOG', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('has 52 cats', () => {
-    expect(CAT_CATALOG).toHaveLength(52);
+  it('has 152 cats', () => {
+    expect(CAT_CATALOG).toHaveLength(152);
   });
 
   it('gives every cat a name, description and a real level', () => {
@@ -61,6 +61,11 @@ describe('CAT_CATALOG', () => {
 });
 
 describe('levels', () => {
+  it('has fifteen of them, numbered in order', () => {
+    expect(LEVELS).toHaveLength(15);
+    LEVELS.forEach((level, index) => expect(level.number).toBe(index + 1));
+  });
+
   it('gets harder as they go, and never skips a tier band', () => {
     for (let i = 1; i < LEVELS.length; i++) {
       const previous = LEVELS[i - 1]!;
@@ -68,6 +73,25 @@ describe('levels', () => {
       expect(current.minTier).toBeGreaterThanOrEqual(previous.minTier);
       expect(current.maxTier).toBeGreaterThanOrEqual(previous.maxTier);
       expect(current.minTier).toBeLessThanOrEqual(current.maxTier);
+      // Rounds only ever get longer, never shorter — the other half of
+      // "each level a little harder" once the tiers top out.
+      expect(current.questionsPerRound).toBeGreaterThanOrEqual(previous.questionsPerRound);
+    }
+  });
+
+  it('guarantees a cat through level 5, then makes them shyer, never absurd', () => {
+    for (const level of LEVELS) {
+      if (level.number <= 5) {
+        expect(level.catChance).toBe(1);
+      } else {
+        expect(level.catChance).toBeLessThan(1);
+        // Never so low the collection feels impossible to a child.
+        expect(level.catChance).toBeGreaterThanOrEqual(0.5);
+      }
+    }
+    // And the chance never goes back up as levels rise.
+    for (let i = 1; i < LEVELS.length; i++) {
+      expect(LEVELS[i]!.catChance).toBeLessThanOrEqual(LEVELS[i - 1]!.catChance);
     }
   });
 

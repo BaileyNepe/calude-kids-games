@@ -11,6 +11,7 @@ import { FONT, MIN_TAP_SIZE, TEXT_RESOLUTION } from './config';
 import { PALETTE, makeRng, seedFrom, doodleShape, doodleRectPoints } from './art/doodle';
 import { drawFraction } from './art/fractions';
 import type { Question } from './mathEngine';
+import { gameState } from './gameState';
 import { sfx } from './audio';
 
 /** Options for a doodle button. */
@@ -330,9 +331,30 @@ export class QuestionBanner extends Phaser.GameObjects.Container {
 }
 
 /**
- * Bursts a spray of stars at a point. The standard "you got it!" flourish.
+ * The "you got it!" flourish.
+ *
+ * The default is a spray of stars, but the shop sells fancier versions —
+ * heart bursts, confetti, full fireworks — and whichever effect is
+ * equipped restyles every celebration in every game from this one place.
  */
 export function celebrate(scene: Phaser.Scene, x: number, y: number, count = 14): void {
+  switch (gameState.wearing.effect) {
+    case 'effect-hearts':
+      celebrateHearts(scene, x, y, count);
+      return;
+    case 'effect-confetti':
+      celebrateConfetti(scene, x, y, count + 8);
+      return;
+    case 'effect-fireworks':
+      celebrateFireworks(scene, x, y, count);
+      return;
+    default:
+      celebrateStars(scene, x, y, count);
+  }
+}
+
+/** The free flourish: a radial spray of stars. */
+function celebrateStars(scene: Phaser.Scene, x: number, y: number, count: number): void {
   const colours = ['gold', 'pink', 'teal'];
   for (let i = 0; i < count; i++) {
     const key = `star-${colours[i % colours.length]!}`;
@@ -353,6 +375,109 @@ export function celebrate(scene: Phaser.Scene, x: number, y: number, count = 14)
       onComplete: () => star.destroy(),
     });
   }
+}
+
+/** Hearts float up and away rather than bursting outward. */
+function celebrateHearts(scene: Phaser.Scene, x: number, y: number, count: number): void {
+  for (let i = 0; i < count; i++) {
+    const heart = scene.add
+      .image(x + Phaser.Math.Between(-40, 40), y + Phaser.Math.Between(-16, 16), 'heart-full')
+      .setScale(Phaser.Math.FloatBetween(0.4, 0.85))
+      .setDepth(900);
+    scene.tweens.add({
+      targets: heart,
+      y: heart.y - Phaser.Math.Between(140, 260),
+      x: heart.x + Phaser.Math.Between(-60, 60),
+      alpha: 0,
+      angle: Phaser.Math.Between(-40, 40),
+      duration: Phaser.Math.Between(700, 1100),
+      delay: i * 30,
+      ease: 'Sine.easeOut',
+      onComplete: () => heart.destroy(),
+    });
+  }
+}
+
+/** Little paper rectangles that pop up, then flutter down. */
+function celebrateConfetti(scene: Phaser.Scene, x: number, y: number, count: number): void {
+  const colours = [PALETTE.red, PALETTE.sun, PALETTE.teal, PALETTE.pink, PALETTE.purple, PALETTE.green];
+  for (let i = 0; i < count; i++) {
+    const piece = scene.add
+      .rectangle(x, y, Phaser.Math.Between(10, 16), Phaser.Math.Between(6, 10), colours[i % colours.length]!)
+      .setDepth(900)
+      .setAngle(Phaser.Math.Between(0, 180));
+
+    const spreadX = Phaser.Math.Between(-190, 190);
+    // Up first, then a slower flutter down past where it started.
+    scene.tweens.add({
+      targets: piece,
+      y: y - Phaser.Math.Between(90, 200),
+      x: x + spreadX * 0.6,
+      duration: Phaser.Math.Between(240, 380),
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        scene.tweens.add({
+          targets: piece,
+          y: y + Phaser.Math.Between(120, 240),
+          x: x + spreadX,
+          angle: piece.angle + Phaser.Math.Between(-360, 360),
+          alpha: 0,
+          duration: Phaser.Math.Between(700, 1100),
+          ease: 'Sine.easeIn',
+          onComplete: () => piece.destroy(),
+        });
+      },
+    });
+  }
+}
+
+/** The big one: expanding rings and two staggered sparks bursts. */
+function celebrateFireworks(scene: Phaser.Scene, x: number, y: number, count: number): void {
+  const colours = [0xff5c5c, 0xffd93d, 0x4ecdc4, 0xff79b0, 0xa77bf3, 0xffffff];
+
+  const burst = (bx: number, by: number, sparks: number, delay: number): void => {
+    scene.time.delayedCall(delay, () => {
+      // The expanding ring.
+      const ring = scene.add.graphics().setDepth(899);
+      const state = { r: 10, alpha: 0.9 };
+      const ringColour = colours[Phaser.Math.Between(0, colours.length - 1)]!;
+      scene.tweens.add({
+        targets: state,
+        r: 130,
+        alpha: 0,
+        duration: 520,
+        ease: 'Cubic.easeOut',
+        onUpdate: () => {
+          ring.clear();
+          ring.lineStyle(4, ringColour, state.alpha);
+          ring.strokeCircle(bx, by, state.r);
+        },
+        onComplete: () => ring.destroy(),
+      });
+
+      // The sparks.
+      for (let i = 0; i < sparks; i++) {
+        const spark = scene.add
+          .rectangle(bx, by, 7, 7, colours[i % colours.length]!)
+          .setDepth(900);
+        const angle = (i / sparks) * Math.PI * 2 + Phaser.Math.FloatBetween(-0.2, 0.2);
+        const distance = Phaser.Math.FloatBetween(120, 230);
+        scene.tweens.add({
+          targets: spark,
+          x: bx + Math.cos(angle) * distance,
+          y: by + Math.sin(angle) * distance + 40,
+          alpha: 0,
+          scale: 0.2,
+          duration: Phaser.Math.Between(600, 950),
+          ease: 'Cubic.easeOut',
+          onComplete: () => spark.destroy(),
+        });
+      }
+    });
+  };
+
+  burst(x, y, count, 0);
+  burst(x + Phaser.Math.Between(-120, 120), y - Phaser.Math.Between(40, 100), Math.max(8, count - 4), 240);
 }
 
 /**

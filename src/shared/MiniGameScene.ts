@@ -1,11 +1,11 @@
 /**
- * The shared skeleton behind all three mini-games.
+ * The shared skeleton behind every mini-game.
  *
- * Balloon Pop, Pirate Ship and Feed the Cat differ only in how they *show*
- * a question and how they react to a tap or a drop. Everything else — the
- * round loop, scoring, difficulty ramp, HUD, and the "never punishing"
- * wrong-answer feedback — lives here so the three games can't drift apart
- * as they're written.
+ * The thirteen games differ only in how they *show* a question and how
+ * they react to a tap, swipe or drop. Everything else — the round loop,
+ * scoring, the three-heart lives system, difficulty ramp, HUD, and the
+ * gentle wrong-answer feedback — lives here so the games can't drift
+ * apart as they're written.
  *
  * A subclass implements three methods: build the scenery, present a
  * question, and clear it again.
@@ -16,14 +16,18 @@ import {
   CENTRE_X,
   COINS_PER_CORRECT,
   DESIGN_WIDTH,
-  QUESTIONS_PER_ROUND,
+  LIVES_PER_ROUND,
   SCENES,
+  TYPED_ANSWER_CHANCE,
+  TYPED_ANSWER_MIN_LEVEL,
   textStyle,
 } from './config';
 import { DifficultyTracker, type MathSettings, type Question } from './mathEngine';
+import { devMode, onDevModeChange } from './devMode';
 import { gameState, type GameId } from './gameState';
-import { getLevel, rollReward } from './pets';
-import { showRewardOverlay } from './rewardOverlay';
+import { ESCAPED_COIN_REWARD, getLevel, rollReward } from './pets';
+import { TypeAnswerPad } from './typePad';
+import { showEscapedOverlay, showOutOfLivesOverlay, showRewardOverlay } from './rewardOverlay';
 import {
   CoinDisplay,
   ENCOURAGEMENT,
@@ -44,6 +48,19 @@ export abstract class MiniGameScene extends Phaser.Scene {
   /** How many answer choices this game shows. Subclasses may override. */
   protected optionCount = 4;
 
+  /**
+   * Coins per correct answer. The trickier games — the logic ones, and the
+   * ones that unlock late — set this higher, so braving them pays better.
+   */
+  protected coinsPerCorrect = COINS_PER_CORRECT;
+
+  /**
+   * Added to the level's catChance when the round reward is rolled.
+   * The harder games carry a bonus, so playing them is the smart way to
+   * hunt cats once the drops stop being guaranteed.
+   */
+  protected catChanceBonus = 0;
+
   protected difficulty!: DifficultyTracker;
   protected banner!: QuestionBanner;
   protected coinDisplay!: CoinDisplay;
@@ -56,6 +73,21 @@ export abstract class MiniGameScene extends Phaser.Scene {
 
   /** Correct answers so far this round. */
   private correctThisRound = 0;
+
+  /** Correct answers needed this round — grows with the player's level. */
+  private questionsNeeded = 8;
+
+  /** Hearts left this round. Losing the last one ends it with no cat. */
+  private livesLeft = LIVES_PER_ROUND;
+
+  /** The heart images in the HUD, index 0 leftmost. */
+  private heartIcons: Phaser.GameObjects.Image[] = [];
+
+  /** Dev mode only: the revealed answer beside the banner. */
+  private answerHint: Phaser.GameObjects.Text | null = null;
+
+  /** The number pad, present only while a typed question is up. */
+  private typePad: TypeAnswerPad | null = null;
 
   /**
    * Gates input between questions. Without it, an excited child can tap a
@@ -99,10 +131,16 @@ export abstract class MiniGameScene extends Phaser.Scene {
     this.cameras.main.fadeIn(260);
     this.buildBackground();
     this.buildHud();
+
+    // Dev mode: react immediately when "show answers" is toggled while a
+    // question is on screen, and stop listening when the scene goes away.
+    const unsubscribe = onDevModeChange(() => this.updateAnswerHint());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribe);
+
     this.startRound();
   }
 
-  /** The HUD is identical across the three games, deliberately. */
+  /** The HUD is identical across every game, deliberately. */
   private buildHud(): void {
     createBackButton(this, () => this.returnToWorld());
 
@@ -111,6 +149,19 @@ export abstract class MiniGameScene extends Phaser.Scene {
     this.progressLabel = this.add
       .text(DESIGN_WIDTH - 150, 108, '', textStyle(24, '#2f2b3a'))
       .setOrigin(0.5, 0);
+
+    // The three hearts, in a little column-width row under the back
+    // button — the one corner every game leaves free, clear of the
+    // question banner. Kept above the scenery with a high depth.
+    this.heartIcons = [];
+    for (let i = 0; i < LIVES_PER_ROUND; i++) {
+      this.heartIcons.push(
+        this.add
+          .image(78 + i * 52, 136, 'heart-full')
+          .setScale(0.8)
+          .setDepth(40),
+      );
+    }
 
     this.banner = new QuestionBanner(this, CENTRE_X, 86);
 
@@ -138,20 +189,109 @@ export abstract class MiniGameScene extends Phaser.Scene {
       max: level.maxTier,
     });
     this.correctThisRound = 0;
+    // Later levels ask for longer rounds — that's part of the difficulty
+    // curve now that the maths tiers top out.
+    this.questionsNeeded = level.questionsPerRound;
+    // A fresh set of hearts every round.
+    this.livesLeft = LIVES_PER_ROUND;
+    this.refreshHearts();
     this.nextQuestion();
+  }
+
+  /**
+   * Where the next question comes from.
+   *
+   * By default the shared maths engine. The logic games (patterns, the
+   * balance scales) override this to build their own Question objects —
+   * everything else about the round loop then works unchanged.
+   */
+  protected createQuestion(): Question {
+    return this.difficulty.nextQuestion(this.optionCount);
   }
 
   /** Generates and presents the next question. */
   protected nextQuestion(): void {
     this.clearQuestion();
-    this.question = this.difficulty.nextQuestion(this.optionCount);
+    this.clearTypePad();
+    this.question = this.createQuestion();
     this.banner.setQuestion(this.question);
     // A picture question already carries its instruction in the banner, so
     // repeating it underneath would just be the same sentence twice.
     this.instructionLabel.setText(this.banner.hasVisual ? '' : this.question.instruction);
     this.updateProgressLabel();
-    this.presentQuestion(this.question);
+    this.updateAnswerHint();
+    if (this.shouldTypeAnswer()) {
+      this.presentTypedQuestion();
+    } else {
+      this.presentQuestion(this.question);
+    }
     this.acceptingInput = true;
+  }
+
+  /**
+   * Whether this question must be typed rather than picked.
+   *
+   * Only from level 6, only sometimes, and only for whole-number answers —
+   * a fraction or decimal has no honest home on a digit pad. Recall beats
+   * recognition, which is exactly the step up the later levels want.
+   */
+  private shouldTypeAnswer(): boolean {
+    if (!Number.isInteger(this.question.answer)) return false;
+    if (devMode.alwaysType) return true;
+    return gameState.level >= TYPED_ANSWER_MIN_LEVEL && Math.random() < TYPED_ANSWER_CHANCE;
+  }
+
+  /** Shows the number pad in place of the game's own answer pieces. */
+  private presentTypedQuestion(): void {
+    this.onTypedQuestion();
+    this.typePad = new TypeAnswerPad(this, (value) => {
+      const pad = this.typePad;
+      if (pad === null) return;
+      const wasCorrect = this.submitAnswer(value, pad);
+      // A wrong entry is wiped so the retry starts from a clean slate —
+      // leaving "4823" up would invite fiddling one digit at a time.
+      if (!wasCorrect) pad.clearEntry();
+    });
+  }
+
+  /**
+   * Hook for scene-specific tidying when a question is typed instead of
+   * presented normally — the Cat Cafe blanks its order line, Feed the Cat
+   * closes the cat's mouth. Default: nothing.
+   */
+  protected onTypedQuestion(): void {
+    // Intentionally empty — see doc comment.
+  }
+
+  private clearTypePad(): void {
+    this.typePad?.destroy();
+    this.typePad = null;
+  }
+
+  /**
+   * Dev mode only: prints the current question's answer beside the banner.
+   * Invisible (and destroyed) unless the dev panel's toggle is on.
+   */
+  private updateAnswerHint(): void {
+    if (!devMode.showAnswers || this.question === undefined) {
+      this.answerHint?.destroy();
+      this.answerHint = null;
+      return;
+    }
+    if (this.answerHint === null) {
+      this.answerHint = this.add
+        .text(952, 86, '', textStyle(22, '#c2401f', { fontStyle: 'bold' }))
+        .setOrigin(0, 0.5)
+        .setDepth(2000)
+        .setAlpha(0.9);
+    }
+    // Use the option label rather than the raw number, so fractions show
+    // as "1/2" and decimals keep their places — what's actually tappable.
+    const index = this.question.options.findIndex(
+      (value) => Math.abs(value - this.question.answer) < 1e-9,
+    );
+    const label = index >= 0 ? this.question.optionLabels[index]! : `${this.question.answer}`;
+    this.answerHint.setText(`✓ ${label}`);
   }
 
   /**
@@ -165,7 +305,14 @@ export abstract class MiniGameScene extends Phaser.Scene {
   }
 
   private updateProgressLabel(): void {
-    this.progressLabel.setText(`${this.correctThisRound} / ${QUESTIONS_PER_ROUND}`);
+    this.progressLabel.setText(`${this.correctThisRound} / ${this.questionsNeeded}`);
+  }
+
+  /** Redraws the hearts to match livesLeft. */
+  private refreshHearts(): void {
+    this.heartIcons.forEach((icon, index) => {
+      icon.setTexture(index < this.livesLeft ? 'heart-full' : 'heart-empty');
+    });
   }
 
   /* --- Answering ----------------------------------------------------- */
@@ -202,7 +349,7 @@ export abstract class MiniGameScene extends Phaser.Scene {
     celebrate(this, target.x, target.y);
     floatingText(this, target.x, target.y - 60, pick(PRAISE), '#2e7d32');
 
-    gameState.addCoins(COINS_PER_CORRECT);
+    gameState.addCoins(this.coinsPerCorrect);
     gameState.recordCorrectAnswer(this.gameId, this.difficulty.tier);
     this.coinDisplay.setValue(gameState.coins);
 
@@ -212,7 +359,7 @@ export abstract class MiniGameScene extends Phaser.Scene {
     const leveledUp = this.difficulty.recordCorrect();
     if (leveledUp) this.showLevelUp();
 
-    if (this.correctThisRound >= QUESTIONS_PER_ROUND) {
+    if (this.correctThisRound >= this.questionsNeeded) {
       this.time.delayedCall(900, () => this.endRound());
     } else {
       this.time.delayedCall(leveledUp ? 1300 : 850, () => this.nextQuestion());
@@ -220,17 +367,52 @@ export abstract class MiniGameScene extends Phaser.Scene {
   }
 
   /**
-   * Gentle feedback only.
+   * Feedback for a wrong answer, and the cost of one heart.
    *
-   * No score deduction, no difficulty drop, no harsh sound, no red. This is
-   * the single implementation of wrong-answer feedback in the codebase so
-   * that the low-pressure promise holds across all three games.
+   * The moment itself stays gentle — no harsh sound, no red, and the child
+   * can try the same question again straight away. But each slip costs a
+   * heart, and losing the third ends the round without a cat. That's the
+   * stake that makes a heart worth having; the kindness is in the framing,
+   * not in pretending mistakes don't happen.
    */
   private handleWrong(target: Phaser.GameObjects.Components.Transform): void {
     this.difficulty.recordWrong();
     sfx.wrong();
     gentleWobble(this, target);
     floatingText(this, target.x, target.y - 50, pick(ENCOURAGEMENT), '#5b5470');
+
+    this.livesLeft = Math.max(0, this.livesLeft - 1);
+
+    // The heart that was just lost pops before it greys out, so the child
+    // connects the slip to the cost without a word being said.
+    const lost = this.heartIcons[this.livesLeft];
+    if (lost !== undefined) {
+      this.tweens.add({
+        targets: lost,
+        scale: { from: 1.25, to: 0.8 },
+        duration: 320,
+        ease: 'Back.easeIn',
+        onComplete: () => this.refreshHearts(),
+      });
+    }
+
+    if (this.livesLeft <= 0) {
+      this.acceptingInput = false;
+      // A short beat so the wobble finishes before the overlay lands.
+      this.time.delayedCall(700, () => this.outOfLives());
+    }
+  }
+
+  /** The round is over with no cat: the one cost the lives system carries. */
+  private outOfLives(): void {
+    this.clearQuestion();
+    this.clearTypePad();
+    this.banner.clearVisual();
+    showOutOfLivesOverlay(
+      this,
+      () => this.startRound(),
+      () => this.returnToWorld(),
+    );
   }
 
   /** A cheerful "level up" flash. Framed as a reward, never as a warning. */
@@ -241,11 +423,30 @@ export abstract class MiniGameScene extends Phaser.Scene {
 
   /* --- Round completion ---------------------------------------------- */
 
-  /** Ends the round, banks it, and rolls for a cat. */
+  /** Ends a *won* round, banks it, and rolls for a cat. */
   protected endRound(): void {
     this.acceptingInput = false;
     this.clearQuestion();
+    this.clearTypePad();
     gameState.recordRoundWon(this.gameId);
+
+    // From level 6 a cat is no longer guaranteed: the level's catChance
+    // decides whether one appears at all — improved by the game's own
+    // bonus, so the harder games are the better cat-hunting grounds. A
+    // failed roll still pays out; the player won the round either way.
+    const { catChance } = getLevel(gameState.level);
+    const chance = Math.min(1, catChance + this.catChanceBonus);
+    if (Math.random() >= chance) {
+      gameState.addCoins(ESCAPED_COIN_REWARD);
+      this.coinDisplay.setValue(gameState.coins);
+      showEscapedOverlay(
+        this,
+        ESCAPED_COIN_REWARD,
+        () => this.startRound(),
+        () => this.returnToWorld(),
+      );
+      return;
+    }
 
     const reward = rollReward(gameState.pets, gameState.level);
     if (reward.isNew) {
@@ -265,6 +466,16 @@ export abstract class MiniGameScene extends Phaser.Scene {
       () => this.startRound(),
       () => this.returnToWorld(),
     );
+  }
+
+  /**
+   * Awards bonus coins outside the answer flow — golden balloons and other
+   * little extras. Never touches lives or round progress.
+   */
+  protected awardBonusCoins(amount: number, x: number, y: number): void {
+    gameState.addCoins(amount);
+    this.coinDisplay.setValue(gameState.coins);
+    floatingText(this, x, y, `+${amount}!`, '#c47f00');
   }
 
   /** Fades back to the world hub. */

@@ -38,14 +38,26 @@ function bake(
   g.destroy();
 }
 
-/** The four reactions available on the emote bar. */
-export type EmoteName = 'happy' | 'sad' | 'surprised' | 'silly';
+/** The reactions available on the emote bar. */
+export type EmoteName =
+  | 'happy'
+  | 'sad'
+  | 'surprised'
+  | 'silly'
+  | 'love'
+  | 'cool'
+  | 'sleepy'
+  | 'starstruck';
 
 export const EMOTES: readonly { name: EmoteName; label: string; colour: number }[] = [
   { name: 'happy', label: 'Happy', colour: PALETTE.yellow },
   { name: 'sad', label: 'Sad', colour: PALETTE.blue },
   { name: 'surprised', label: 'Wow', colour: PALETTE.orange },
   { name: 'silly', label: 'Silly', colour: PALETTE.pink },
+  { name: 'love', label: 'Love', colour: 0xffb0c9 },
+  { name: 'cool', label: 'Cool', colour: PALETTE.teal },
+  { name: 'sleepy', label: 'Sleepy', colour: 0xc9bfe8 },
+  { name: 'starstruck', label: 'Stars', colour: PALETTE.sun },
 ];
 
 /**
@@ -123,10 +135,77 @@ function drawFace(
         lineWidth: 3,
       });
       break;
+
+    case 'love': {
+      // Two heart eyes and a small contented smile.
+      for (const dir of [-1, 1]) {
+        const hx = cx + dir * 16;
+        dot(g, hx - 5, eyeY - 3, 6, PALETTE.red);
+        dot(g, hx + 5, eyeY - 3, 6, PALETTE.red);
+        doodleShape(
+          g,
+          [
+            { x: hx - 10, y: eyeY - 1 },
+            { x: hx + 10, y: eyeY - 1 },
+            { x: hx, y: eyeY + 12 },
+          ],
+          PALETTE.red,
+          { offset: 0, lineWidth: 2 },
+        );
+      }
+      doodleArc(g, cx, cy + 14, 14, 10, true, PALETTE.ink, 5);
+      break;
+    }
+
+    case 'cool': {
+      // Sunglasses joined across the bridge, and a lopsided grin.
+      for (const dir of [-1, 1]) {
+        doodleShape(g, doodleEllipsePoints(rng, cx + dir * 17, eyeY, 13, 11, 1.5, 14), PALETTE.ink, {
+          offset: 0,
+          lineWidth: 3,
+        });
+      }
+      doodleStroke(g, rng, { x: cx - 6, y: eyeY - 2 }, { x: cx + 6, y: eyeY - 2 }, PALETTE.ink, 4);
+      doodleStroke(g, rng, { x: cx - 30, y: eyeY - 6 }, { x: cx - 40, y: eyeY - 10 }, PALETTE.ink, 4);
+      doodleStroke(g, rng, { x: cx + 30, y: eyeY - 6 }, { x: cx + 40, y: eyeY - 10 }, PALETTE.ink, 4);
+      doodleArc(g, cx + 4, cy + 16, 14, 8, true, PALETTE.ink, 5);
+      break;
+    }
+
+    case 'sleepy': {
+      // Closed lids, a tiny yawn, and a drifting Z.
+      doodleArc(g, cx - 16, eyeY + 3, 9, 4, true, PALETTE.ink, 4);
+      doodleArc(g, cx + 16, eyeY + 3, 9, 4, true, PALETTE.ink, 4);
+      doodleShape(g, doodleEllipsePoints(rng, cx, cy + 18, 8, 10, 1.5, 12), PALETTE.ink, {
+        offset: 0,
+        lineWidth: 3,
+      });
+      // The Z, up near the temple.
+      doodleStroke(g, rng, { x: cx + 22, y: cy - 34 }, { x: cx + 34, y: cy - 34 }, PALETTE.ink, 4);
+      doodleStroke(g, rng, { x: cx + 34, y: cy - 34 }, { x: cx + 22, y: cy - 24 }, PALETTE.ink, 4);
+      doodleStroke(g, rng, { x: cx + 22, y: cy - 24 }, { x: cx + 34, y: cy - 24 }, PALETTE.ink, 4);
+      break;
+    }
+
+    case 'starstruck': {
+      // Star eyes and a huge open grin.
+      for (const dir of [-1, 1]) {
+        const sx = cx + dir * 16;
+        const pts: { x: number; y: number }[] = [];
+        for (let i = 0; i < 10; i++) {
+          const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
+          const r = i % 2 === 0 ? 11 : 4.5;
+          pts.push({ x: sx + Math.cos(angle) * r, y: eyeY + Math.sin(angle) * r });
+        }
+        doodleShape(g, pts, PALETTE.sun, { offset: 0, lineWidth: 2.5 });
+      }
+      doodleArc(g, cx, cy + 12, 18, 14, true, PALETTE.ink, 5);
+      break;
+    }
   }
 }
 
-/** Bakes all four emote faces. Keys are `face-<name>`. */
+/** Bakes all the emote faces. Keys are `face-<name>`. */
 export function makeFaceTextures(scene: Phaser.Scene): void {
   for (const emote of EMOTES) {
     bake(scene, `face-${emote.name}`, 120, 120, (g, rng) =>

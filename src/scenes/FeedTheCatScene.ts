@@ -173,6 +173,11 @@ export class FeedTheCatScene extends MiniGameScene {
     );
   }
 
+  /** No fish to catch on a typed question — the cat just sits and waits. */
+  protected override onTypedQuestion(): void {
+    this.cat.setTexture(`cat-${this.catId}-idle`);
+  }
+
   protected presentQuestion(question: Question): void {
     // The cat opens its mouth, waiting to be fed.
     this.cat.setTexture(`cat-${this.catId}-open`);

@@ -136,11 +136,37 @@ describe('GameState persistence', () => {
   });
 
   it('clamps a hand-edited level into range', () => {
-    store.set(KEY, JSON.stringify({ version: 3, coins: 0, pets: [], level: 99, progress: {} }));
+    store.set(KEY, JSON.stringify({ version: 3, coins: 0, pets: [], level: 999, progress: {} }));
     const state = new GameState();
     state.load();
-    expect(state.level).toBeLessThanOrEqual(5);
+    expect(state.level).toBeLessThanOrEqual(MAX_LEVEL);
     expect(state.level).toBeGreaterThanOrEqual(1);
+  });
+
+  it('keeps a live save intact while gaining progress slots for new games', () => {
+    // A save written before the six newest games existed: it only knows
+    // the original seven. Deploying the new build must not cost this
+    // player anything — that's the "no wipe on deploy" promise.
+    store.set(
+      KEY,
+      JSON.stringify({
+        version: 3,
+        coins: 340,
+        pets: ['ginger', 'pearl', 'nova'],
+        level: 3,
+        progress: { balloonPop: { highestTier: 4, roundsWon: 12, correctAnswers: 96 } },
+      }),
+    );
+    const state = new GameState();
+    state.load();
+
+    expect(state.coins).toBe(340);
+    expect(state.pets).toEqual(['ginger', 'pearl', 'nova']);
+    expect(state.level).toBe(3);
+    expect(state.getProgress('balloonPop').roundsWon).toBe(12);
+    // The new games appear with fresh progress rather than crashing.
+    expect(state.getProgress('frogPond').roundsWon).toBe(0);
+    expect(state.getProgress('ufoCatch').correctAnswers).toBe(0);
   });
 
   it('never lets coins go negative', () => {
@@ -149,6 +175,26 @@ describe('GameState persistence', () => {
     state.addCoins(10);
     state.addCoins(-999);
     expect(state.coins).toBe(0);
+  });
+
+  it('collects each hidden gem exactly once, and remembers them', () => {
+    const first = new GameState();
+    first.load();
+    expect(first.collectGem('world-bush')).toBe(true);
+    expect(first.collectGem('world-bush')).toBe(false);
+
+    const second = new GameState();
+    second.load();
+    expect(second.hasGem('world-bush')).toBe(true);
+    expect(second.hasGem('gem-pond-reeds')).toBe(false);
+  });
+
+  it('gives pre-gem saves an empty gem list instead of crashing', () => {
+    store.set(KEY, JSON.stringify({ version: 3, coins: 50, pets: ['ginger'], progress: {} }));
+    const state = new GameState();
+    state.load();
+    expect(state.gems).toEqual([]);
+    expect(state.coins).toBe(50);
   });
 
   it('reports whether a collected pet was new', () => {
@@ -213,6 +259,20 @@ describe('levels, character and wardrobe', () => {
     expect(state.level).toBe(2);
   });
 
+  it('dev level jumps clamp into range and persist', () => {
+    const first = new GameState();
+    first.load();
+    first.devSetLevel(999);
+    expect(first.level).toBe(MAX_LEVEL);
+    first.devSetLevel(-3);
+    expect(first.level).toBe(1);
+    first.devSetLevel(7);
+
+    const second = new GameState();
+    second.load();
+    expect(second.level).toBe(7);
+  });
+
   it('never advances past the last level', () => {
     const state = new GameState();
     state.load();
@@ -253,6 +313,9 @@ describe('levels, character and wardrobe', () => {
     expect(state.wearing.hat).toBe('hat-bow');
     state.wear('hat', null);
     expect(state.wearing.hat).toBeNull();
+
+    state.wear('effect', 'effect-fireworks');
+    expect(state.wearing.effect).toBe('effect-fireworks');
 
     state.wearCatItem('collar-red');
     expect(state.catWearing.collar).toBe('collar-red');

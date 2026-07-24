@@ -13,8 +13,6 @@ import { PALETTE } from '../shared/art/doodle';
 import {
   makeBalloonTexture,
   makeBurstTexture,
-  makeCatSilhouette,
-  makeCatTexture,
   makeCloudTexture,
   makeCoinTexture,
   makeFishTexture,
@@ -28,11 +26,25 @@ import {
   makeRocketTexture,
   makeFlameTexture,
   makeTreatTexture,
+  makeHeartTextures,
+  makeLilyPadTexture,
+  makeFrogTexture,
+  makeBeeTexture,
+  makeHiveTexture,
+  makeBubbleTexture,
+  makeChestTexture,
+  makeBottleTexture,
+  makeCauldronTexture,
+  makeEngineTexture,
+  makeWagonTexture,
+  makeUfoTexture,
+  makeAsteroidTexture,
+  makeGemTexture,
+  makeMemoryCardTextures,
   type KidLook,
 } from '../shared/art/sprites';
 import { makeFaceTextures, makeIconTextures } from '../shared/art/faces';
 import { makeWardrobeTextures } from '../shared/art/wardrobe';
-import { CAT_CATALOG } from '../shared/pets';
 import { gameState } from '../shared/gameState';
 
 /** Colours used for balloons and fish, keyed by a stable name. */
@@ -243,21 +255,34 @@ export class BootScene extends Phaser.Scene {
     makeFlameTexture(this);
     for (const treat of TREATS) makeTreatTexture(this, treat.name, treat.colour);
 
+    // The lives HUD, and the six newest games.
+    makeHeartTextures(this);
+    makeLilyPadTexture(this);
+    makeFrogTexture(this);
+    makeBeeTexture(this);
+    makeHiveTexture(this);
+    makeBubbleTexture(this);
+    makeChestTexture(this);
+    makeCauldronTexture(this);
+    makeEngineTexture(this);
+    makeUfoTexture(this);
+    makeAsteroidTexture(this);
+    makeGemTexture(this);
+    makeMemoryCardTextures(this);
+    for (const { name, colour } of PIECE_COLOURS) {
+      makeBottleTexture(this, name, colour);
+      makeWagonTexture(this, name, colour);
+    }
+
     // Drawn faces and icons, replacing the system emoji.
     makeFaceTextures(this);
     makeIconTextures(this);
     makeWardrobeTextures(this);
 
-    // Every collectible cat gets an idle pose and a locked silhouette.
-    //
-    // The three reacting expressions (open / happy / noseUp) are NOT baked
-    // here. With 52 cats that would be 260 textures at boot — several
-    // seconds of drawing and a lot of texture memory for faces that are
-    // only ever used by whichever single cat is starring in a game. Those
-    // are baked on demand instead, via ensureCatFaces().
-    for (const cat of CAT_CATALOG) {
-      makeCatTexture(this, cat.id, cat.look, 'idle');
-      makeCatSilhouette(this, cat.id, cat.look);
-    }
+    // Deliberately NO cat baking here. With 152 cats in the catalog, even
+    // one idle pose each would mean a long visible pause at boot. Every
+    // scene that shows a cat now bakes what it needs on demand, via
+    // ensureCatFaces() / makeCatSilhouette() — see PetsScene, WorldScene,
+    // FeedTheCatScene, CatCafeScene and ShopScene.
   }
 }

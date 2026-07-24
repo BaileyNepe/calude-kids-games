@@ -9,6 +9,7 @@ import Phaser from 'phaser';
 import { DESIGN_WIDTH, DESIGN_HEIGHT } from './shared/config';
 import { PALETTE } from './shared/art/doodle';
 import { sfx } from './shared/audio';
+import { initDevMode } from './shared/devMode';
 import { BootScene } from './scenes/BootScene';
 import { WorldScene } from './scenes/WorldScene';
 import { BalloonPopScene } from './scenes/BalloonPopScene';
@@ -18,6 +19,16 @@ import { NumberNinjaScene } from './scenes/NumberNinjaScene';
 import { BuildNumberScene } from './scenes/BuildNumberScene';
 import { CatCafeScene } from './scenes/CatCafeScene';
 import { RocketLaunchScene } from './scenes/RocketLaunchScene';
+import { FrogPondScene } from './scenes/FrogPondScene';
+import { HoneyHiveScene } from './scenes/HoneyHiveScene';
+import { TreasureDiveScene } from './scenes/TreasureDiveScene';
+import { MagicPotionScene } from './scenes/MagicPotionScene';
+import { NumberTrainScene } from './scenes/NumberTrainScene';
+import { UfoCatchScene } from './scenes/UfoCatchScene';
+import { MemoryMatchScene } from './scenes/MemoryMatchScene';
+import { PatternPathScene } from './scenes/PatternPathScene';
+import { BalanceScalesScene } from './scenes/BalanceScalesScene';
+import { CastleKnockScene } from './scenes/CastleKnockScene';
 import { PetsScene } from './scenes/PetsScene';
 import { SettingsScene } from './scenes/SettingsScene';
 import { ShopScene } from './scenes/ShopScene';
@@ -55,6 +66,16 @@ const config: Phaser.Types.Core.GameConfig = {
     BuildNumberScene,
     CatCafeScene,
     RocketLaunchScene,
+    FrogPondScene,
+    HoneyHiveScene,
+    TreasureDiveScene,
+    MagicPotionScene,
+    NumberTrainScene,
+    UfoCatchScene,
+    MemoryMatchScene,
+    PatternPathScene,
+    BalanceScalesScene,
+    CastleKnockScene,
     PetsScene,
     SettingsScene,
     ShopScene,
@@ -69,6 +90,11 @@ const game = new Phaser.Game(config);
 if (import.meta.env.DEV) {
   (window as unknown as { game: Phaser.Game }).game = game;
 }
+
+// The hidden dev panel (cmd+shift+\): level jumps, free coins, and shown
+// answers. Shipped in every build — the shortcut is the gate, and it needs
+// a physical keyboard, which the tablets this is played on don't have.
+initDevMode(game);
 
 /**
  * Browsers will not start an AudioContext until the user has interacted

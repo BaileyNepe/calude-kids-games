@@ -18,8 +18,8 @@ import {
   collectionProgress,
   type Cat,
 } from '../shared/pets';
-import { CoinDisplay, createBackButton } from '../shared/ui';
-import { ensureCatFaces } from '../shared/art/sprites';
+import { CoinDisplay, createBackButton, fitText } from '../shared/ui';
+import { ensureCatFaces, makeCatSilhouette, makeCatTexture } from '../shared/art/sprites';
 import { sfx } from '../shared/audio';
 
 export class PetsScene extends Phaser.Scene {
@@ -54,41 +54,49 @@ export class PetsScene extends Phaser.Scene {
   /**
    * One tab per level, up to the highest unlocked.
    *
-   * With 52 cats a single grid would be unreadable, and hiding future
+   * With 152 cats a single grid would be unreadable, and hiding future
    * levels entirely would remove the sense of what's still to come — so
    * unlocked levels are browsable and locked ones show as a padlock.
+   * Fifteen tabs no longer fit in one line, so they wrap into two rows.
    */
   private buildLevelTabs(): void {
-    const width = 150;
-    const gap = 12;
-    const total = LEVELS.length * width + (LEVELS.length - 1) * gap;
-    const startX = CENTRE_X - total / 2 + width / 2;
+    const width = 142;
+    const gap = 10;
+    const perRow = 8;
 
     LEVELS.forEach((level, index) => {
-      const x = startX + index * (width + gap);
+      const row = Math.floor(index / perRow);
+      const column = index % perRow;
+      const inThisRow = row === 0 ? Math.min(perRow, LEVELS.length) : LEVELS.length - perRow;
+      const rowWidth = inThisRow * width + (inThisRow - 1) * gap;
+      const startX = CENTRE_X - rowWidth / 2 + width / 2;
+      const x = startX + column * (width + gap);
+      const y = 138 + row * 58;
+
       const unlocked = level.number <= gameState.level;
       const active = level.number === this.viewLevel;
 
-      const container = this.add.container(x, 156);
+      const container = this.add.container(x, y);
       const bg = this.add.graphics();
       doodleShape(
         bg,
-        doodleRectPoints(makeRng(seedFrom(`pets-tab-${level.number}`)), -width / 2, -30, width, 60, 3),
+        doodleRectPoints(makeRng(seedFrom(`pets-tab-${level.number}`)), -width / 2, -25, width, 50, 3),
         active ? level.colour : unlocked ? PALETTE.white : 0xd6cde4,
         { offset: 2, lineWidth: active ? 5 : 3 },
       );
       container.add(bg);
-      container.add(
-        this.add
-          .text(0, 0, unlocked ? level.name : 'Locked', textStyle(20, unlocked ? '#2f2b3a' : '#8a7fa3', { fontStyle: 'bold' }))
-          .setOrigin(0.5),
-      );
+      const label = this.add
+        .text(0, 0, unlocked ? level.name : 'Locked', textStyle(18, unlocked ? '#2f2b3a' : '#8a7fa3', { fontStyle: 'bold' }))
+        .setOrigin(0.5);
+      // "Crystal Caves" and friends must fit a narrower tab than before.
+      fitText(label, width - 16, 18, 12);
+      container.add(label);
 
       // Locked levels are visible but not browsable.
       if (!unlocked) return;
 
       container.setInteractive(
-        new Phaser.Geom.Rectangle(-width / 2, -30, width, 60),
+        new Phaser.Geom.Rectangle(-width / 2, -25, width, 50),
         Phaser.Geom.Rectangle.Contains,
       );
       container.on('pointerdown', () => {
@@ -107,7 +115,7 @@ export class PetsScene extends Phaser.Scene {
     const cellWidth = 196;
     const cellHeight = 250;
     const startX = CENTRE_X - ((columns - 1) * cellWidth) / 2;
-    const startY = 330;
+    const startY = 372;
 
     cats.forEach((cat, index) => {
       const column = index % columns;
@@ -136,8 +144,11 @@ export class PetsScene extends Phaser.Scene {
     );
     container.add(bg);
 
-    // The cat, or its silhouette.
-    const texture = owned ? `cat-${cat.id}-idle` : `cat-${cat.id}-silhouette`;
+    // The cat, or its silhouette — baked on first sight, since nothing
+    // bakes the 152-cat catalog up front any more.
+    const texture = owned
+      ? makeCatTexture(this, cat.id, cat.look, 'idle')
+      : makeCatSilhouette(this, cat.id, cat.look);
     const image = this.add.image(0, -34, texture).setScale(0.66);
     if (!owned) image.setAlpha(0.45);
     container.add(image);

@@ -31,6 +31,16 @@ export const DROP_RATES: Record<Rarity, number> = {
 /** Coins given instead when the rolled cat is already owned. */
 export const DUPLICATE_COIN_REWARD = 25;
 
+/**
+ * Coins given when a round is won but the cat gets away.
+ *
+ * From level 6 upward a won round only produces a cat `catChance` of the
+ * time (see LevelDef). The consolation is deliberately bigger than the
+ * duplicate reward: the player did everything right and deserves to feel
+ * that, even when the cat was shy.
+ */
+export const ESCAPED_COIN_REWARD = 30;
+
 /** How each rarity is presented. */
 export const RARITY_STYLE: Record<Rarity, { label: string; colour: number; textColour: string }> = {
   common: { label: 'Common', colour: PALETTE.teal, textColour: '#1c6b64' },
@@ -66,6 +76,22 @@ export interface LevelDef {
   maxTier: number;
   /** Background tint for the level badge. */
   colour: number;
+  /**
+   * Correct answers needed to finish a round at this level.
+   *
+   * The maths tiers stop climbing once they hit the top of the ladder, so
+   * later levels get harder by asking for longer rounds instead — each
+   * level a little more than the last.
+   */
+  questionsPerRound: number;
+  /**
+   * Probability that winning a round awards a cat, 0..1.
+   *
+   * Guaranteed through level 5. From level 6 the cats get shyer: a won
+   * round might only pay out coins, which stretches the later collections
+   * out without ever punishing the player for a *lost* round.
+   */
+  catChance: number;
 }
 
 /**
@@ -83,6 +109,8 @@ export const LEVELS: readonly LevelDef[] = [
     minTier: 0,
     maxTier: 1,
     colour: PALETTE.green,
+    questionsPerRound: 8,
+    catChance: 1,
   },
   {
     number: 2,
@@ -91,6 +119,8 @@ export const LEVELS: readonly LevelDef[] = [
     minTier: 1,
     maxTier: 2,
     colour: PALETTE.teal,
+    questionsPerRound: 8,
+    catChance: 1,
   },
   {
     number: 3,
@@ -99,6 +129,8 @@ export const LEVELS: readonly LevelDef[] = [
     minTier: 2,
     maxTier: 3,
     colour: 0x4a8c3f,
+    questionsPerRound: 8,
+    catChance: 1,
   },
   {
     number: 4,
@@ -107,14 +139,120 @@ export const LEVELS: readonly LevelDef[] = [
     minTier: 3,
     maxTier: 5,
     colour: 0x8a93b8,
+    questionsPerRound: 8,
+    catChance: 1,
   },
   {
     number: 5,
     name: 'Space',
-    blurb: 'The rarest cats of all live here.',
+    blurb: 'Where the stars purr back.',
     minTier: 4,
     maxTier: 6,
     colour: PALETTE.purple,
+    questionsPerRound: 8,
+    catChance: 1,
+  },
+  // From here on the tier ladder is nearly topped out, so the levels get
+  // harder through longer rounds — and shyer cats (see catChance).
+  {
+    number: 6,
+    name: 'Jungle',
+    blurb: 'Vines, drums and hidden whiskers.',
+    minTier: 4,
+    maxTier: 6,
+    colour: 0x3f9c4f,
+    questionsPerRound: 9,
+    catChance: 0.9,
+  },
+  {
+    number: 7,
+    name: 'Desert',
+    blurb: 'Hot sand and cool cats.',
+    minTier: 5,
+    maxTier: 6,
+    colour: 0xe0b34c,
+    questionsPerRound: 9,
+    catChance: 0.85,
+  },
+  {
+    number: 8,
+    name: 'Candy Land',
+    blurb: 'Everything smells of sweets.',
+    minTier: 5,
+    maxTier: 6,
+    colour: 0xff9ec4,
+    questionsPerRound: 10,
+    catChance: 0.8,
+  },
+  {
+    number: 9,
+    name: 'Volcano',
+    blurb: 'Only the bravest paws come here.',
+    minTier: 5,
+    maxTier: 6,
+    colour: 0xe0653a,
+    questionsPerRound: 10,
+    catChance: 0.75,
+  },
+  {
+    number: 10,
+    name: 'Crystal Caves',
+    blurb: 'Glittering tunnels, glowing eyes.',
+    minTier: 6,
+    maxTier: 6,
+    colour: 0x9c7ae8,
+    questionsPerRound: 10,
+    catChance: 0.7,
+  },
+  {
+    number: 11,
+    name: 'Cloud Kingdom',
+    blurb: 'Castles built of cumulus.',
+    minTier: 6,
+    maxTier: 6,
+    colour: 0x8fc9f0,
+    questionsPerRound: 11,
+    catChance: 0.65,
+  },
+  {
+    number: 12,
+    name: 'Deep Ocean',
+    blurb: 'Down where the lanternfish glow.',
+    minTier: 6,
+    maxTier: 6,
+    colour: 0x2f5fae,
+    questionsPerRound: 11,
+    catChance: 0.6,
+  },
+  {
+    number: 13,
+    name: 'Fairy Garden',
+    blurb: 'Every toadstool is a doorway.',
+    minTier: 6,
+    maxTier: 6,
+    colour: 0xd989e8,
+    questionsPerRound: 11,
+    catChance: 0.55,
+  },
+  {
+    number: 14,
+    name: 'Dreamland',
+    blurb: 'The cats you meet with your eyes shut.',
+    minTier: 6,
+    maxTier: 6,
+    colour: 0xb8a8f0,
+    questionsPerRound: 12,
+    catChance: 0.5,
+  },
+  {
+    number: 15,
+    name: 'Rainbow Realm',
+    blurb: 'The very end of every rainbow.',
+    minTier: 6,
+    maxTier: 6,
+    colour: 0xff8fa3,
+    questionsPerRound: 12,
+    catChance: 0.5,
   },
 ];
 
@@ -138,7 +276,7 @@ const FUR = {
   sand: 0xe8d3a8,
 } as const;
 
-/** Compact helper so 52 catalog entries stay readable. */
+/** Compact helper so 152 catalog entries stay readable. */
 function cat(
   id: string,
   name: string,
@@ -151,7 +289,7 @@ function cat(
 }
 
 /**
- * The full catalog — 52 cats across five levels.
+ * The full catalog — 152 cats across fifteen levels.
  * Order here is the order shown on the pets screen.
  */
 export const CAT_CATALOG: readonly Cat[] = [
@@ -453,6 +591,326 @@ export const CAT_CATALOG: readonly Cat[] = [
     sparkles: true,
     crown: true,
     wings: true,
+  }),
+
+  /* --- Level 6: Jungle (10) ------------------------------------- */
+  cat('mango', 'Mango', 'common', 6, 'Sweetest cat in the canopy.', {
+    body: 0xf0a04b, accent: 0xd97a2a, pattern: 'patches',
+  }),
+  cat('jade', 'Jade', 'common', 6, 'Blends into the big leaves.', {
+    body: 0x6bbf6b, accent: 0x3f8c3f, pattern: 'stripes',
+  }),
+  cat('bongo', 'Bongo', 'common', 6, 'Taps out rhythms on hollow logs.', {
+    body: 0x9c6b45, accent: 0x6f4a2e, pattern: 'patches',
+  }),
+  cat('tiki', 'Tiki', 'common', 6, 'Wears flowers behind one ear.', {
+    body: 0xe8c95a, accent: 0xc49a2a, pattern: 'stripes',
+  }),
+  cat('liana', 'Liana', 'common', 6, 'Swings from vine to vine.', {
+    body: 0x8fb85f, accent: 0x5f8a3a, pattern: 'stripes',
+  }),
+  cat('cacao', 'Cacao', 'common', 6, 'Smells faintly of chocolate.', {
+    body: 0x7a5238, accent: 0x523524, pattern: 'patches',
+  }),
+  cat('panthera', 'Shadowpaw', 'rare', 6, 'A patch of night that purrs.', {
+    body: 0x3a3548, accent: 0x262233, pattern: 'stripes', sparkles: true,
+  }),
+  cat('orchid', 'Orchid', 'rare', 6, 'Blooms only for friends.', {
+    body: 0xe88fd0, accent: 0xb85fa8, pattern: 'patches', sparkles: true,
+  }),
+  cat('toucan', 'Pip', 'rare', 6, 'Copies every bird call, badly.', {
+    body: 0x4a4458, accent: PALETTE.orange, pattern: 'patches', sparkles: true,
+  }),
+  cat('jungleking', 'Rumble', 'legendary', 6, 'When he purrs, the whole jungle hums.', {
+    body: 0xd9a03a, accent: 0x7a5238, pattern: 'stripes', sparkles: true, crown: true,
+  }),
+
+  /* --- Level 7: Desert (10) ------------------------------------- */
+  cat('dune', 'Dune', 'common', 7, 'Naps on the warm side of every rock.', {
+    body: 0xe8d3a8, accent: 0xc4a870, pattern: 'stripes',
+  }),
+  cat('prickle', 'Prickle', 'common', 7, 'Hugs cacti. Nobody knows how.', {
+    body: 0x9cb872, accent: 0x6b8a48, pattern: 'patches',
+  }),
+  cat('oasis', 'Oasis', 'common', 7, 'Always knows where the water is.', {
+    body: 0x7fc4d9, accent: 0x4a94ab, pattern: 'patches',
+  }),
+  cat('fennec', 'Fennec', 'common', 7, 'Ears bigger than her head.', {
+    body: 0xf0d9a8, accent: 0xd9b070, pattern: 'stripes',
+  }),
+  cat('scarab', 'Scarab', 'common', 7, 'Collects shiny beetles, gently.', {
+    body: 0x4a8a7a, accent: 0x2f5f54, pattern: 'stripes',
+  }),
+  cat('adobe', 'Adobe', 'common', 7, 'The colour of sunset walls.', {
+    body: 0xd98a5f, accent: 0xa85f3a, pattern: 'patches',
+  }),
+  cat('mirage', 'Mirage', 'rare', 7, 'Might not actually be there.', {
+    body: 0xd9e8f0, accent: 0xa8c4d4, pattern: 'patches', sparkles: true,
+  }),
+  cat('sphinx', 'Sphinx', 'rare', 7, 'Asks riddles. Accepts fish.', {
+    body: 0xd9b070, accent: 0x8a6a3a, pattern: 'stripes', sparkles: true,
+  }),
+  cat('sirocco', 'Sirocco', 'rare', 7, 'Arrives on the hot wind.', {
+    body: 0xe89a4a, accent: 0xb8702a, pattern: 'stripes', sparkles: true,
+  }),
+  cat('pharaoh', 'Pharaoh', 'legendary', 7, 'The pyramids were built as scratching posts.', {
+    body: PALETTE.sun, accent: 0x2f5fae, pattern: 'stripes', sparkles: true, crown: true,
+  }),
+
+  /* --- Level 8: Candy Land (10) --------------------------------- */
+  cat('bonbon', 'Bonbon', 'common', 8, 'Round, pink, and pleased about it.', {
+    body: 0xf5a8c4, accent: 0xd97a9c, pattern: 'patches',
+  }),
+  cat('minty', 'Minty', 'common', 8, 'Cool breath, cooler attitude.', {
+    body: 0xa8e8d0, accent: 0x6bc4a8, pattern: 'stripes',
+  }),
+  cat('toffee', 'Toffee', 'common', 8, 'Slightly sticky. Always.', {
+    body: 0xc4884a, accent: 0x94602a, pattern: 'patches',
+  }),
+  cat('jellybean', 'Jellybean', 'common', 8, 'A different colour every angle.', {
+    body: 0xb87ae8, accent: 0xe8c95a, pattern: 'patches',
+  }),
+  cat('waffles', 'Waffles', 'common', 8, 'Checked fur, syrupy purr.', {
+    body: 0xe8c088, accent: 0xb8905a, pattern: 'stripes',
+  }),
+  cat('sherbet', 'Sherbet', 'common', 8, 'Fizzes when she sneezes.', {
+    body: 0xf5e08f, accent: 0xf5a8c4, pattern: 'patches',
+  }),
+  cat('gumdrop', 'Gumdrop', 'rare', 8, 'Bounces instead of walking.', {
+    body: 0x8fd45f, accent: 0x5fa83a, pattern: 'patches', sparkles: true,
+  }),
+  cat('candyfloss', 'Floss', 'rare', 8, 'Lighter than air, fluffier too.', {
+    body: 0xf5c4e0, accent: 0xe89ac4, pattern: 'patches', sparkles: true,
+  }),
+  cat('liquorice', 'Liquorice', 'rare', 8, 'Sweet, despite appearances.', {
+    body: 0x3a3548, accent: 0xf5a8c4, pattern: 'stripes', sparkles: true,
+  }),
+  cat('sugarqueen', 'Meringue', 'legendary', 8, 'Her crown is spun sugar.', {
+    body: 0xfff5e8, accent: 0xf5a8c4, pattern: 'patches', sparkles: true, crown: true,
+  }),
+
+  /* --- Level 9: Volcano (10) ------------------------------------ */
+  cat('ember', 'Ember', 'common', 9, 'Warm to sit next to.', {
+    body: 0xe0653a, accent: 0xa8401f, pattern: 'stripes',
+  }),
+  cat('ash', 'Ash', 'common', 9, 'Leaves grey pawprints everywhere.', {
+    body: 0x8a8a94, accent: 0x5f5f6b, pattern: 'patches',
+  }),
+  cat('basalt', 'Basalt', 'common', 9, 'Sits perfectly still for hours.', {
+    body: 0x4a4652, accent: 0x33303d, pattern: 'patches',
+  }),
+  cat('sizzle', 'Sizzle', 'common', 9, 'Crackles when he stretches.', {
+    body: 0xe8884a, accent: 0xc45f24, pattern: 'stripes',
+  }),
+  cat('crater', 'Crater', 'common', 9, 'Sleeps in a perfect circle.', {
+    body: 0x94684a, accent: 0x6b4830, pattern: 'patches',
+  }),
+  cat('smoulder', 'Smoulder', 'common', 9, 'Eyes like banked coals.', {
+    body: 0x6b4a52, accent: 0xe0653a, pattern: 'stripes',
+  }),
+  cat('lava', 'Lava', 'rare', 9, 'Flows downhill, slowly, onto laps.', {
+    body: 0xe84a2a, accent: PALETTE.sun, pattern: 'stripes', sparkles: true,
+  }),
+  cat('obsidian', 'Obsidian', 'rare', 9, 'So glossy you can see yourself.', {
+    body: 0x2f2b3d, accent: 0x8a7fe8, pattern: 'patches', sparkles: true,
+  }),
+  cat('geyser', 'Geyser', 'rare', 9, 'Leaps straight up without warning.', {
+    body: 0x7fc4e8, accent: 0xe8e8f0, pattern: 'stripes', sparkles: true,
+  }),
+  cat('magmaking', 'Vulcan', 'legendary', 9, 'The volcano rumbles when he is hungry.', {
+    body: 0xd93a1f, accent: PALETTE.sun, pattern: 'stripes', sparkles: true, crown: true, wings: true,
+  }),
+
+  /* --- Level 10: Crystal Caves (10) ------------------------------ */
+  cat('quartz', 'Quartz', 'common', 10, 'Sparkles in torchlight.', {
+    body: 0xe8e0f0, accent: 0xc4b8d9, pattern: 'patches',
+  }),
+  cat('amethyst', 'Amethyst', 'common', 10, 'Purrs in violet.', {
+    body: 0xb88fe8, accent: 0x8a5fc4, pattern: 'stripes',
+  }),
+  cat('topaz', 'Topaz', 'common', 10, 'Warm gold in the dark.', {
+    body: 0xe8c05a, accent: 0xc4942a, pattern: 'patches',
+  }),
+  cat('stalag', 'Stalag', 'common', 10, 'Sleeps standing up. Somehow.', {
+    body: 0x9ca8b8, accent: 0x6b7a8a, pattern: 'stripes',
+  }),
+  cat('echoette', 'Echoette', 'common', 10, 'Her meow comes back twice.', {
+    body: 0x7a8fb8, accent: 0x4a5f8a, pattern: 'patches',
+  }),
+  cat('glowworm', 'Glimmer', 'common', 10, 'Finds every speck of light.', {
+    body: 0xc4e85f, accent: 0x8fb82a, pattern: 'stripes',
+  }),
+  cat('sapphire', 'Sapphire', 'rare', 10, 'Deep blue and deeper thoughts.', {
+    body: 0x3a5fd9, accent: 0x8fc4f0, pattern: 'patches', sparkles: true,
+  }),
+  cat('rubycat', 'Ruby', 'rare', 10, 'Glows faintly red when happy.', {
+    body: 0xd93a5f, accent: 0xf08fa8, pattern: 'stripes', sparkles: true,
+  }),
+  cat('geode', 'Geode', 'rare', 10, 'Plain outside, dazzling inside.', {
+    body: 0x8a8a94, accent: 0xb88fe8, pattern: 'patches', sparkles: true,
+  }),
+  cat('crystalqueen', 'Prisma', 'legendary', 10, 'Every gem in the cave is hers.', {
+    body: 0xd9c4f5, accent: 0x8a5fc4, pattern: 'patches', sparkles: true, crown: true,
+  }),
+
+  /* --- Level 11: Cloud Kingdom (10) ------------------------------ */
+  cat('nimbus', 'Nimbus', 'common', 11, 'Slightly damp, very soft.', {
+    body: 0xd9e0e8, accent: 0xa8b8c9, pattern: 'patches',
+  }),
+  cat('cumulus', 'Cumulus', 'common', 11, 'The fluffiest thing in the sky.', {
+    body: 0xf5f5ff, accent: 0xd0d9e8, pattern: 'patches',
+  }),
+  cat('breeze', 'Breeze', 'common', 11, 'Arrives without a sound.', {
+    body: 0xa8d4e8, accent: 0x74a8c9, pattern: 'stripes',
+  }),
+  cat('drizzle', 'Drizzle', 'common', 11, 'Brings tiny rainclouds indoors.', {
+    body: 0x8fa8c4, accent: 0x5f7a9c, pattern: 'stripes',
+  }),
+  cat('sunbeam', 'Sunbeam', 'common', 11, 'Finds the gap in every cloud.', {
+    body: 0xf5df8f, accent: 0xe8b83a, pattern: 'patches',
+  }),
+  cat('kite', 'Kite', 'common', 11, 'Happiest on a windy day.', {
+    body: 0xe88f8f, accent: 0x74a8c9, pattern: 'patches',
+  }),
+  cat('thunder', 'Thunder', 'rare', 11, 'You hear his purr a valley away.', {
+    body: 0x5f5f7a, accent: PALETTE.sun, pattern: 'stripes', sparkles: true,
+  }),
+  cat('zephyr', 'Zephyr', 'rare', 11, 'Rides the west wind side-saddle.', {
+    body: 0xb8e0f0, accent: 0x74b8d9, pattern: 'stripes', sparkles: true,
+  }),
+  cat('aurora', 'Aurora', 'rare', 11, 'Trails ribbons of colour at dusk.', {
+    body: 0x8fe0c4, accent: 0xb88fe8, pattern: 'patches', sparkles: true,
+  }),
+  cat('skyking', 'Stratus', 'legendary', 11, 'His castle has no floor and needs none.', {
+    body: 0xe8f0ff, accent: 0x74a8c9, pattern: 'patches', sparkles: true, crown: true, wings: true,
+  }),
+
+  /* --- Level 12: Deep Ocean (10) --------------------------------- */
+  cat('lantern', 'Lantern', 'common', 12, 'Her whiskers glow in the dark.', {
+    body: 0x3a5f8a, accent: 0xc4e85f, pattern: 'patches',
+  }),
+  cat('kelp', 'Kelp', 'common', 12, 'Drifts wherever the current goes.', {
+    body: 0x4a8a6b, accent: 0x2f5f48, pattern: 'stripes',
+  }),
+  cat('urchin', 'Urchin', 'common', 12, 'Spiky hair, soft heart.', {
+    body: 0x5f4a7a, accent: 0x3d2f52, pattern: 'patches',
+  }),
+  cat('current', 'Current', 'common', 12, 'Never swims in a straight line.', {
+    body: 0x4a7ab8, accent: 0x2f5285, pattern: 'stripes',
+  }),
+  cat('barnacle', 'Barnacle', 'common', 12, 'Once he sits, he stays.', {
+    body: 0x8a7a6b, accent: 0x5f5248, pattern: 'patches',
+  }),
+  cat('inkwell', 'Inkwell', 'common', 12, 'Leaves mysterious dark clouds.', {
+    body: 0x33304a, accent: 0x1f1d30, pattern: 'none',
+  }),
+  cat('angler', 'Angler', 'rare', 12, 'Carries his own reading light.', {
+    body: 0x2f3d6b, accent: 0xf5df8f, pattern: 'patches', sparkles: true,
+  }),
+  cat('moray', 'Moray', 'rare', 12, 'Longer than she looks.', {
+    body: 0x5f8a4a, accent: 0x8fd45f, pattern: 'stripes', sparkles: true,
+  }),
+  cat('abyss', 'Abyss', 'rare', 12, 'From further down than down goes.', {
+    body: 0x1f1d38, accent: 0x4a94d9, pattern: 'patches', sparkles: true,
+  }),
+  cat('leviathan', 'Pearlbeard', 'legendary', 12, 'Old as the tides and twice as deep.', {
+    body: 0x2f5fae, accent: 0xf7f0e8, pattern: 'stripes', sparkles: true, crown: true,
+  }),
+
+  /* --- Level 13: Fairy Garden (10) -------------------------------- */
+  cat('petal', 'Petal', 'common', 13, 'Sleeps curled inside a rose.', {
+    body: 0xf5b8d0, accent: 0xe08fb8, pattern: 'patches',
+  }),
+  cat('toadstool', 'Toadstool', 'common', 13, 'Red with white spots, like home.', {
+    body: 0xe05f5f, accent: 0xfff5e8, pattern: 'patches',
+  }),
+  cat('dewdrop', 'Dewdrop', 'common', 13, 'Only appears before breakfast.', {
+    body: 0xb8e0e8, accent: 0x8fc4d0, pattern: 'stripes',
+  }),
+  cat('bramblewisp', 'Wisp', 'common', 13, 'More giggle than cat.', {
+    body: 0xd9e8b8, accent: 0xa8c47a, pattern: 'patches',
+  }),
+  cat('foxglove', 'Foxglove', 'common', 13, 'Wears the flowers as mittens.', {
+    body: 0xc48fe0, accent: 0x945fb8, pattern: 'stripes',
+  }),
+  cat('acorncap', 'Thimble', 'common', 13, 'Small enough to ride a snail.', {
+    body: 0xc9a06b, accent: 0x94703d, pattern: 'patches',
+  }),
+  cat('pixiedust', 'Pixie', 'rare', 13, 'Sheds actual glitter.', {
+    body: 0xf0d98f, accent: 0xe88fd0, pattern: 'patches', sparkles: true,
+  }),
+  cat('mothwing', 'Mothwing', 'rare', 13, 'Flutters rather than walks.', {
+    body: 0xd9cfc0, accent: 0x8a7a94, pattern: 'stripes', sparkles: true,
+  }),
+  cat('willowisp', 'Flicker', 'rare', 13, 'Leads you somewhere nice, usually.', {
+    body: 0xa8e8d9, accent: 0x5fc4a8, pattern: 'patches', sparkles: true,
+  }),
+  cat('fairyqueen', 'Titania', 'legendary', 13, 'The garden grows where she walks.', {
+    body: 0xe8c4f5, accent: 0x8fd45f, pattern: 'patches', sparkles: true, crown: true, wings: true,
+  }),
+
+  /* --- Level 14: Dreamland (10) ----------------------------------- */
+  cat('snooze', 'Snooze', 'common', 14, 'Asleep in this picture. And all others.', {
+    body: 0xc4b8e8, accent: 0x9488c4, pattern: 'patches',
+  }),
+  cat('pillow', 'Pillow', 'common', 14, 'Professionally soft.', {
+    body: 0xf0e8f5, accent: 0xd0c4e0, pattern: 'patches',
+  }),
+  cat('lullaby', 'Lullaby', 'common', 14, 'Purrs in three-four time.', {
+    body: 0x8fa8e0, accent: 0x5f7ab8, pattern: 'stripes',
+  }),
+  cat('twilight', 'Twilight', 'common', 14, 'Arrives just after the streetlights.', {
+    body: 0x6b5f94, accent: 0xf5df8f, pattern: 'patches',
+  }),
+  cat('quilt', 'Quilt', 'common', 14, 'Every patch a different nap.', {
+    body: 0xd9a8b8, accent: 0x8fa8e0, pattern: 'patches',
+  }),
+  cat('yawn', 'Yawn', 'common', 14, 'Contagious within seconds.', {
+    body: 0xe0d0b8, accent: 0xb8a488, pattern: 'stripes',
+  }),
+  cat('reverie', 'Reverie', 'rare', 14, 'Half here, half somewhere lovely.', {
+    body: 0xb8d0f5, accent: 0xe8c4f5, pattern: 'patches', sparkles: true,
+  }),
+  cat('nocturne', 'Nocturne', 'rare', 14, 'Plays piano while you sleep. Probably.', {
+    body: 0x3d3a5f, accent: 0xc4b8e8, pattern: 'stripes', sparkles: true,
+  }),
+  cat('daydream', 'Daydream', 'rare', 14, 'Visits during maths lessons.', {
+    body: 0xf5e0c4, accent: 0x8fc9f0, pattern: 'patches', sparkles: true,
+  }),
+  cat('sandmancat', 'Somnus', 'legendary', 14, 'One blink from him and it is morning.', {
+    body: 0x8a7fe8, accent: 0xf5df8f, pattern: 'patches', sparkles: true, crown: true, wings: true,
+  }),
+
+  /* --- Level 15: Rainbow Realm (10) -------------------------------- */
+  cat('scarlet', 'Scarlet', 'common', 15, 'The red stripe of the rainbow.', {
+    body: 0xe85f5f, accent: 0xb83a3a, pattern: 'stripes',
+  }),
+  cat('tangerine', 'Tangerine', 'common', 15, 'The orange stripe, freshly squeezed.', {
+    body: 0xf0954a, accent: 0xc46a24, pattern: 'stripes',
+  }),
+  cat('lemondrop', 'Lemondrop', 'common', 15, 'The yellow stripe, extra zesty.', {
+    body: 0xf5df5f, accent: 0xd9b82a, pattern: 'stripes',
+  }),
+  cat('shamrock', 'Shamrock', 'common', 15, 'The green stripe, twice as lucky.', {
+    body: 0x6bcf7f, accent: 0x3f9c4f, pattern: 'stripes',
+  }),
+  cat('cobalt', 'Cobalt', 'common', 15, 'The blue stripe, cool as rain.', {
+    body: 0x5b9bf5, accent: 0x2f6bc4, pattern: 'stripes',
+  }),
+  cat('violet', 'Violet', 'common', 15, 'The purple stripe, quietly regal.', {
+    body: 0xa77bf3, accent: 0x7a4fc4, pattern: 'stripes',
+  }),
+  cat('prism', 'Prism', 'rare', 15, 'Splits sunbeams for fun.', {
+    body: 0xf0f0f5, accent: 0xe88fd0, pattern: 'patches', sparkles: true,
+  }),
+  cat('goldpot', 'Nugget', 'rare', 15, 'Found at the rainbow’s end, purring.', {
+    body: 0xf0c43a, accent: 0xc4942a, pattern: 'patches', sparkles: true,
+  }),
+  cat('sundog', 'Halo', 'rare', 15, 'A second little sun, with paws.', {
+    body: 0xf5e8b8, accent: 0xf0954a, pattern: 'patches', sparkles: true,
+  }),
+  cat('spectrum', 'Iris', 'legendary', 15, 'Every colour at once. The last cat of all.', {
+    body: 0xf5f5ff, accent: 0xe85f8f, pattern: 'stripes', sparkles: true, crown: true, wings: true,
   }),
 ];
 
